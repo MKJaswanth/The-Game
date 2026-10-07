@@ -1,0 +1,121 @@
+.snake-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 600px;
+  margin: 0 auto;
+  gap: var(--space-4);
+}
+
+.snake-header {
+  display: flex;
+  justifyContent: space-between;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-md);
+}
+
+.snake-stats {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--color-text-dim);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.stat-val {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  color: #fff;
+}
+
+.snake-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1;
+  background: #090a14;
+  border: 2px solid var(--color-surface-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-glow);
+}
+
+.snake-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.snake-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 15, 26, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  text-align: center;
+  gap: var(--space-4);
+  animation: fadeIn 200ms ease;
+}
+
+.snake-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.dpad-btn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.dpad-btn:active {
+  background: var(--color-primary);
+  transform: scale(0.92);
+}
+
+.toast-score {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-success);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px var(--color-success-glow);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  z-index: 1000;
+  animation: slideUp 250ms ease;
+}
