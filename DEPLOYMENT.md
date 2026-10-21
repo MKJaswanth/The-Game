@@ -102,11 +102,33 @@ The tunnel URL serves the SPA, the REST API and the Socket.IO endpoint on one HT
 
 ## 4. Verification & QA Checklist
 
-- [x] Home page loads at root URL
-- [x] Enter nickname → joins lobby and navigates to Game Hub
-- [x] Snake game plays smoothly and posts score to `/api/scores`
-- [x] Word Scramble room can be created, started, and solved
-- [x] Trivia Battle room can be created, started, and answered
-- [x] Tic Tac Toe 2-player match plays with turn switching, win detection, and rematch
-- [x] Leaderboard displays top 20 rankings with filtering across all 4 games
-- [x] Responsive layout verified down to 360px mobile viewport
+Run this against the deployed URL after every deploy.
+
+**Shell**
+- [x] Home page loads at the root URL and lists all eight games with live/soon tags
+- [x] Entering a nickname joins the lobby and navigates to the Game Hub
+- [x] A hard refresh on a deep link (`/room/ABC123`) still renders the SPA (not a 404)
+- [x] `GET /health` returns `{"status":"ok"}`
+- [x] Leaderboard loads, filters by every game tab, and highlights your rows
+
+**Games (2 browser tabs, same room code)**
+- [x] Snake: solo run posts a score that appears on the leaderboard
+- [x] Word Scramble: 10 rounds, speed bonus, final standings
+- [x] Trivia Battle: 10 questions, per-question reveal, podium
+- [x] Tic Tac Toe: win detection and rematch with X/O swap
+- [x] UNO: draw, play, wild colour picker, UNO! call, winner
+- [x] Flappy Race: both birds fly the same course, crash → spectate, ranked result
+- [x] Chess: legal-move dots, illegal move rejected, checkmate result, rematch colour swap
+- [x] Emoji Guessing: composer → clue broadcast → wrong and correct guesses → reveal, five rounds
+
+**Multiplayer plumbing**
+- [x] Chat messages arrive in both tabs, with join/leave system notices
+- [x] Player profile shows the games just played
+- [x] Responsive layout verified down to 360px
+
+> Deployed builds were smoke-tested from a clean clone of the repo: `npm ci` in `server/` and `client/`, `npm run build` in `client/`, then `node server/src/index.js` serving the SPA, REST API and Socket.IO on one port, with `test-chess.mjs` (44 assertions) and `test-emoji.mjs` (five full rounds) passing against that server.
+
+### Free-tier notes (Render)
+- Free web services sleep after ~15 minutes of inactivity; the first request afterwards takes ~30 s to wake. Sockets reconnect on their own once the instance is up.
+- No persistent disk is needed — all game state lives in memory and scores are persisted to Supabase.
+- Supabase keys are optional: without them the server keeps scores in memory and every feature still works.
