@@ -1,8 +1,14 @@
 import { Server } from 'socket.io';
 import { registerLobbyHandlers } from './lobby.js';
 import { registerRoomHandlers } from './rooms.js';
+import { registerChatHandlers } from './chat.js';
 import { registerWordScrambleHandlers } from './games/wordscramble.js';
 import { registerTriviaHandlers } from './games/trivia.js';
+import { registerTTTHandlers } from './games/tictactoe.js';
+import { registerUnoHandlers } from './games/uno.js';
+import { registerFlappyHandlers } from './games/flappy.js';
+import { registerChessHandlers } from './games/chess.js';
+import { registerEmojiHandlers } from './games/emoji.js';
 
 let ioInstance = null;
 
@@ -23,8 +29,14 @@ export function initSocket(httpServer) {
     // Register handlers
     registerLobbyHandlers(ioInstance, socket);
     registerRoomHandlers(ioInstance, socket);
+    registerChatHandlers(ioInstance, socket);
     registerWordScrambleHandlers(ioInstance, socket);
     registerTriviaHandlers(ioInstance, socket);
+    registerTTTHandlers(ioInstance, socket);
+    registerUnoHandlers(ioInstance, socket);
+    registerFlappyHandlers(ioInstance, socket);
+    registerChessHandlers(ioInstance, socket);
+    registerEmojiHandlers(ioInstance, socket);
   });
 
   return ioInstance;

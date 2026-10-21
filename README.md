@@ -9,13 +9,19 @@ A real-time multiplayer gaming hub built for teams and friends. Pick a nickname,
 1. **🐍 Snake:** Classic arcade survival score attack with speed progression and leaderboard submission.
 2. **🔤 Word Scramble:** Real-time multiplayer word-unscrambling race featuring 266 words across 3 difficulty tiers, speed bonuses, and a visual 10-round stepper.
 3. **🧠 Trivia Battle:** Fast-paced 10-question quiz battle with Open Trivia DB integration, 60-question fallback bank, 15-second timers, speed bonus scoring, and winner podiums.
-4. **❌⭕ Tic Tac Toe:** *(In Progress)* 1v1 turn-based tactical duel with instant rematches.
+4. **❌⭕ Tic Tac Toe:** 1v1 turn-based tactical duel with instant rematches and a CyberBot opponent.
+5. **🃏 UNO:** Full 108-card deck for 2–6 players — Skips, Reverses, Draw 2, Wilds, Wild +4, forced draw stacks, the UNO! call with a 5-second **Catch!** penalty, and card-point scoring.
+6. **🐦 Flappy Race:** Server-authoritative 1–4 player survival race. Everyone flies the same pipe course; last bird flying wins and every racer's pipes are saved to the leaderboard.
+7. **♟️ Chess:** Full-rules 1v1 with server-validated moves, legal-move highlighting, check/checkmate detection, draw offers, resign, colour-swapping rematches and a promotion picker.
+8. **🤔 Emoji Guessing:** A party game for 2–8 players — one player turns a secret phrase into emoji, everyone else races to decode it. Five rounds, rotating clue-giver, speed scoring.
+
+All eight games are listed on the landing page and in the hub, each with its player count and live/soon state pulled from a single shared catalog.
 
 ---
 
 ## 🛠️ Architecture & Tech Stack
 
-- **Frontend:** React 19 + Vite SPA with custom dark glassmorphic design system and Outfit typography.
+- **Frontend:** React 19 + Vite SPA with a custom graphite-arcade design system and Outfit typography.
 - **Backend:** Node.js + Express authoritative server.
 - **Real-Time Engine:** Socket.IO for synchronized game states, timers, and room presences.
 - **Database:** Supabase (PostgreSQL) for player statistics and leaderboard persistence.
@@ -57,7 +63,19 @@ CLIENT_URL=http://localhost:5173
 VITE_SERVER_URL=http://localhost:4000
 ```
 
-### 4. Running the App
+### 4. Game Engine Tests
+With the backend running, each multiplayer engine has a socket-level suite:
+
+```bash
+node test-uno.mjs        # UNO
+node test-flappy.mjs     # Flappy Race
+node test-chess.mjs      # Chess (44 assertions)
+node test-emoji.mjs      # Emoji Guessing (5 full rounds)
+```
+
+Sparring bots are available for manual UI checks: `chess-bot.mjs <ROOMCODE>` and `emoji-bot.mjs <ROOMCODE>`.
+
+### 5. Running the App
 Run both backend and frontend servers in separate terminals:
 
 ```bash

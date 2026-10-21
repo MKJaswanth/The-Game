@@ -1,26 +1,29 @@
+/* Snake — Graphite Arcade
+   Flat opaque surfaces, hairline borders, mono numerals. */
+
 .snake-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   max-width: 600px;
   margin: 0 auto;
-  gap: var(--space-4);
+  gap: var(--s4);
 }
 
 .snake-header {
   display: flex;
-  justifyContent: space-between;
+  justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-md);
+  padding: var(--s3) var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
 }
 
 .snake-stats {
   display: flex;
-  gap: var(--space-6);
+  gap: var(--s6);
   align-items: center;
 }
 
@@ -30,17 +33,20 @@
 }
 
 .stat-label {
-  font-size: 11px;
-  color: var(--color-text-dim);
+  font-size: var(--t-xs);
+  color: var(--text-3);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  font-family: var(--mono);
 }
 
 .stat-val {
-  font-size: var(--font-size-xl);
+  font-size: var(--t-xl);
   font-weight: 800;
-  color: #fff;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
 .snake-canvas-wrapper {
@@ -48,11 +54,10 @@
   width: 100%;
   max-width: 500px;
   aspect-ratio: 1;
-  background: #090a14;
-  border: 2px solid var(--color-surface-border);
-  border-radius: var(--radius-card);
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-glow);
 }
 
 .snake-canvas {
@@ -64,15 +69,14 @@
 .snake-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(13, 15, 26, 0.88);
-  backdrop-filter: blur(8px);
+  background: rgba(16, 17, 20, 0.92);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-6);
+  padding: var(--s6);
   text-align: center;
-  gap: var(--space-4);
+  gap: var(--s4);
   animation: fadeIn 200ms ease;
 }
 
@@ -80,42 +84,48 @@
   display: grid;
   grid-template-columns: repeat(3, 56px);
   grid-template-rows: repeat(3, 56px);
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  gap: var(--s2);
+  margin-top: var(--s2);
 }
 
 .dpad-btn {
-  background: var(--color-surface);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-md);
-  color: #fff;
-  font-size: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  font-size: var(--t-base);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   user-select: none;
-  transition: all var(--transition-fast);
+  transition: background var(--ease), color var(--ease);
+}
+
+.dpad-btn:hover {
+  color: var(--text);
+  border-color: var(--border-3);
 }
 
 .dpad-btn:active {
-  background: var(--color-primary);
-  transform: scale(0.92);
+  background: var(--accent);
+  color: #16130c;
+  border-color: var(--accent);
 }
 
 .toast-score {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-success);
-  color: #fff;
+  background: var(--surface-3);
+  border: 1px solid var(--green);
+  color: var(--text);
   padding: 12px 20px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px var(--color-success-glow);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--s2);
   z-index: 1000;
-  animation: slideUp 250ms ease;
+  animation: slideUp 250ms var(--ease-spring);
 }

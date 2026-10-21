@@ -37,10 +37,13 @@ export default function Snake({ onExit }) {
   const foodRef = useRef(food);
   const gameStateRef = useRef(gameState);
 
-  directionRef.current = direction;
-  snakeRef.current = snake;
-  foodRef.current = food;
-  gameStateRef.current = gameState;
+  // Keep refs synchronized with state inside useEffect to avoid accessing refs during render
+  useEffect(() => {
+    directionRef.current = direction;
+    snakeRef.current = snake;
+    foodRef.current = food;
+    gameStateRef.current = gameState;
+  }, [direction, snake, food, gameState]);
 
   // Generate random food not on snake
   const generateFood = useCallback((currentSnake) => {
@@ -57,7 +60,7 @@ export default function Snake({ onExit }) {
   }, []);
 
   // Submit score to backend REST API
-  const submitScore = async (finalScore) => {
+  const submitScore = useCallback(async (finalScore) => {
     if (!nickname || finalScore === 0) return;
     setIsSubmitting(true);
     try {
@@ -73,7 +76,7 @@ export default function Snake({ onExit }) {
       });
       const data = await res.json();
       if (data && data.success) {
-        setToastMessage('Score saved to leaderboard! 🏆');
+        setToastMessage('Score saved to leaderboard!');
       }
     } catch (err) {
       console.warn('[Snake] Score submit failed:', err.message);
@@ -81,7 +84,7 @@ export default function Snake({ onExit }) {
       setIsSubmitting(false);
       setTimeout(() => setToastMessage(''), 3000);
     }
-  };
+  }, [nickname]);
 
   const handleGameOver = useCallback((finalScore) => {
     setGameState('gameover');
@@ -90,10 +93,10 @@ export default function Snake({ onExit }) {
       localStorage.setItem('snake_high_score', finalScore.toString());
     }
     submitScore(finalScore);
-  }, [highScore, nickname]);
+  }, [highScore, submitScore]);
 
   // Start game
-  const startGame = () => {
+  const startGame = useCallback(() => {
     const initSnake = [
       { x: 10, y: 10 },
       { x: 9, y: 10 },
@@ -108,7 +111,7 @@ export default function Snake({ onExit }) {
     setScore(0);
     setSpeed(INITIAL_SPEED);
     setGameState('playing');
-  };
+  }, [generateFood]);
 
   // Keyboard controls (Arrow keys + WASD)
   useEffect(() => {
@@ -162,7 +165,7 @@ export default function Snake({ onExit }) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [startGame]);
 
   // Main game tick loop
   useEffect(() => {
@@ -219,11 +222,11 @@ export default function Snake({ onExit }) {
     const ctx = canvas.getContext('2d');
 
     // Clear background
-    ctx.fillStyle = '#0d0f1a';
+    ctx.fillStyle = '#0c0d11';
     ctx.fillRect(0, 0, CANVAS_DIM, CANVAS_DIM);
 
     // Subtle grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= GRID_SIZE; i++) {
       ctx.beginPath();
@@ -237,11 +240,11 @@ export default function Snake({ onExit }) {
       ctx.stroke();
     }
 
-    // Draw Food with neon glow
+    // Draw Food with a soft glow
     ctx.save();
-    ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = '#22d3ee';
+    ctx.shadowColor = 'rgba(212, 162, 74, 0.6)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#d4a24a';
     ctx.beginPath();
     ctx.arc(
       food.x * CELL_SIZE + CELL_SIZE / 2,
@@ -258,12 +261,12 @@ export default function Snake({ onExit }) {
       ctx.save();
       if (index === 0) {
         // Snake head
-        ctx.fillStyle = '#a855f7';
-        ctx.shadowColor = '#7c3aed';
-        ctx.shadowBlur = 10;
+        ctx.fillStyle = '#e2ba6d';
+        ctx.shadowColor = 'rgba(212, 162, 74, 0.4)';
+        ctx.shadowBlur = 6;
       } else {
-        // Body gradient
-        ctx.fillStyle = index % 2 === 0 ? '#9333ea' : '#7c3aed';
+        // Body — alternating steel tones, no glow
+        ctx.fillStyle = index % 2 === 0 ? '#7e9bb8' : '#6a87a4';
       }
 
       ctx.beginPath();
@@ -309,9 +312,9 @@ export default function Snake({ onExit }) {
               type="button"
               className="btn btn-secondary"
               onClick={() => setGameState('paused')}
-              style={{ padding: '6px 12px', fontSize: 'var(--font-size-xs)' }}
+              style={{ padding: '6px 12px', fontSize: 'var(--t-xs)' }}
             >
-              ⏸ Pause
+              Pause
             </button>
           )}
           {gameState === 'paused' && (
@@ -319,9 +322,9 @@ export default function Snake({ onExit }) {
               type="button"
               className="btn btn-primary"
               onClick={() => setGameState('playing')}
-              style={{ padding: '6px 12px', fontSize: 'var(--font-size-xs)' }}
+              style={{ padding: '6px 12px', fontSize: 'var(--t-xs)' }}
             >
-              ▶ Resume
+              Resume
             </button>
           )}
           {onExit && (
@@ -329,7 +332,7 @@ export default function Snake({ onExit }) {
               type="button"
               className="btn btn-ghost"
               onClick={onExit}
-              style={{ padding: '6px 12px', fontSize: 'var(--font-size-xs)' }}
+              style={{ padding: '6px 12px', fontSize: 'var(--t-xs)' }}
             >
               Exit
             </button>
@@ -349,10 +352,9 @@ export default function Snake({ onExit }) {
         {/* Start / Idle Overlay */}
         {gameState === 'idle' && (
           <div className="snake-overlay">
-            <span style={{ fontSize: '3rem' }}>🐍</span>
-            <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Ready to Slither?</h2>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', maxWidth: '300px' }}>
-              Use Arrow keys or WASD to navigate. Eat glowing energy orbs to grow.
+            <h2 style={{ fontSize: 'var(--t-2xl)', fontWeight: 800 }}>Ready to Slither?</h2>
+            <p style={{ color: 'var(--text-2)', fontSize: 'var(--t-sm)', maxWidth: '300px' }}>
+              Use Arrow keys or WASD to navigate. Eat the amber orbs to grow.
             </p>
             <button type="button" className="btn btn-primary" onClick={startGame} style={{ padding: '12px 28px', fontWeight: 700 }}>
               Start Game (Space)
@@ -363,7 +365,7 @@ export default function Snake({ onExit }) {
         {/* Paused Overlay */}
         {gameState === 'paused' && (
           <div className="snake-overlay">
-            <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Game Paused</h2>
+            <h2 style={{ fontSize: 'var(--t-2xl)', fontWeight: 800 }}>Game Paused</h2>
             <button type="button" className="btn btn-primary" onClick={() => setGameState('playing')}>
               Resume Game
             </button>
@@ -373,12 +375,11 @@ export default function Snake({ onExit }) {
         {/* Game Over Overlay */}
         {gameState === 'gameover' && (
           <div className="snake-overlay">
-            <span style={{ fontSize: '3rem' }}>💥</span>
-            <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Game Over!</h2>
-            <div style={{ display: 'flex', gap: 'var(--space-6)', margin: 'var(--space-2) 0' }}>
+            <h2 style={{ fontSize: 'var(--t-2xl)', fontWeight: 800 }}>Game Over</h2>
+            <div style={{ display: 'flex', gap: 'var(--s6)', margin: 'var(--s2) 0' }}>
               <div>
                 <span className="stat-label">Final Score</span>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent-light)' }}>{score}</div>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-hi)' }}>{score}</div>
               </div>
               <div>
                 <span className="stat-label">Best</span>
@@ -387,12 +388,18 @@ export default function Snake({ onExit }) {
             </div>
 
             {score >= highScore && score > 0 && (
-              <span className="badge badge-accent" style={{ marginBottom: 'var(--space-2)' }}>
-                ⭐ NEW PERSONAL RECORD!
+              <span className="badge badge-accent" style={{ marginBottom: 'var(--s2)' }}>
+                New personal record
               </span>
             )}
 
-            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            {isSubmitting && (
+              <span style={{ fontSize: 'var(--t-xs)', color: 'var(--text-2)' }}>
+                Saving score to leaderboard...
+              </span>
+            )}
+
+            <div style={{ display: 'flex', gap: 'var(--s3)' }}>
               <button type="button" className="btn btn-primary" onClick={startGame} style={{ padding: '10px 20px', fontWeight: 700 }}>
                 Play Again (Space)
               </button>
@@ -409,20 +416,22 @@ export default function Snake({ onExit }) {
       {/* Mobile Touch D-Pad */}
       <div className="snake-dpad" aria-label="Touch Controls">
         <div></div>
-        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: 0, y: -1 })}>▲</button>
+        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: 0, y: -1 })}>↑</button>
         <div></div>
-        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: -1, y: 0 })}>◀</button>
-        <button type="button" className="dpad-btn" onClick={() => setGameState(prev => prev === 'playing' ? 'paused' : 'playing')}>⏸</button>
-        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: 1, y: 0 })}>▶</button>
+        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: -1, y: 0 })}>←</button>
+        <button type="button" className="dpad-btn" onClick={() => setGameState(prev => prev === 'playing' ? 'paused' : 'playing')}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        </button>
+        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: 1, y: 0 })}>→</button>
         <div></div>
-        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: 0, y: 1 })}>▼</button>
+        <button type="button" className="dpad-btn" onClick={() => handleDpad({ x: 0, y: 1 })}>↓</button>
         <div></div>
       </div>
 
       {/* Score Saved Toast */}
       {toastMessage && (
         <div className="toast-score">
-          <span>✅</span>
+          <span style={{ color: 'var(--green)' }}>✓</span>
           <span>{toastMessage}</span>
         </div>
       )}

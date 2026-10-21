@@ -1,4 +1,4 @@
-# 🏁 Milestones & Coverage Plan — The Game
+| 🔲 || 🔲 || 🔲 || 🔲 || 🔲 |# 🏁 Milestones & Coverage Plan — The Game
 
 **Version:** 2.0  
 **Date:** 2026-10-06  
@@ -43,17 +43,17 @@ Draw  Ludo  Sound  PWA  Final QA
 | **M1** | 1 | Core Session & Navigation | US-001–003, US-018–019 | ✅ |
 | **M2** | 1 | Game Hub & Room System | US-004–009 | ✅ |
 | **M3** | 1 | Snake Game | US-010–011 | ✅ |
-| **M4** | 1 | Word Scramble Game | US-020–021 | 🔲 |
-| **M5** | 1 | Trivia Battle | US-012–013 | 🔲 |
-| **M6** | 1 | Tic Tac Toe | US-014–015 | 🔲 |
-| **M7** | 1 | Leaderboard | US-016–017 | 🔲 |
-| **M8** | 1 | Phase 1 QA & Initial Deploy | All Phase 1 | 🔲 |
-| **M9** | 2 | In-Room Chat | US-022 | 🔲 |
-| **M10** | 2 | Player Profiles & Game History | US-023–024 | 🔲 |
-| **M11** | 2 | UNO Card Game | US-025–026 | 🔲 |
-| **M12** | 2 | Flappy Race | US-027 | 🔲 |
-| **M13** | 2 | Chess | US-028–029 | 🔲 |
-| **M14** | 2 | Emoji Guessing Game | US-030–031 | 🔲 |
+| **M4** | 1 | Word Scramble Game | US-020–021 | ✅ |
+| **M5** | 1 | Trivia Battle | US-012–013 | ✅ |
+| **M6** | 1 | Tic Tac Toe | US-014–015 | ✅ |
+| **M7** | 1 | Leaderboard | US-016–017 | ✅ |
+| **M8** | 1 | Phase 1 QA & Initial Deploy | All Phase 1 | ✅ |
+| **M9** | 2 | In-Room Chat | US-022 | ✅ |
+| **M10** | 2 | Player Profiles & Game History | US-023–024 | ✅ |
+| **M11** | 2 | UNO Card Game | US-025–026 | ✅ |
+| **M12** | 2 | Flappy Race | US-027 | ✅ |
+| **M13** | 2 | Chess | US-028–029 | ✅ |
+| **M14** | 2 | Emoji Guessing Game | US-030–031 | ✅ |
 | **M15** | 2 | Phase 2 QA & Deploy Update | All Phase 2 | 🔲 |
 | **M16** | 3 | Skribbl Drawing Game | US-032–033 | 🔲 |
 | **M17** | 3 | Ludo Board Game | US-034–035 | 🔲 |
@@ -275,27 +275,27 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Story | Status |
 |---|---|---|---|
-| M6-01 | Server: TTT engine — board state, turn tracking, move validation | US-014 | 🔲 |
-| M6-02 | Server: enforce turn order, reject out-of-turn moves | US-014 | 🔲 |
-| M6-03 | Server: detect all 8 win conditions and draw | US-014 | 🔲 |
-| M6-04 | Server: emit `ttt:state` with board, current turn, result | US-014 | 🔲 |
-| M6-05 | Client: 3x3 grid UI with clickable cells | US-014 | 🔲 |
-| M6-06 | Client: emit `ttt:move` on cell click | US-014 | 🔲 |
-| M6-07 | Client: show whose turn it is clearly above the board | US-014 | 🔲 |
-| M6-08 | Client: disable board on opponent's turn | US-014 | 🔲 |
-| M6-09 | Client: highlight winning cells on game end | US-014 | 🔲 |
-| M6-10 | End screen — winner/draw + Rematch / Back to Lobby | US-015 | 🔲 |
-| M6-11 | Rematch: both confirm → board resets, X/O swap | US-015 | 🔲 |
-| M6-12 | Submit win/loss to Supabase scores table | US-014 | 🔲 |
+| M6-01 | Server: TTT engine — board state, turn tracking, move validation | US-014 | ✅ |
+| M6-02 | Server: enforce turn order, reject out-of-turn moves | US-014 | ✅ |
+| M6-03 | Server: detect all 8 win conditions and draw | US-014 | ✅ |
+| M6-04 | Server: emit `ttt:state` with board, current turn, result | US-014 | ✅ |
+| M6-05 | Client: 3x3 grid UI with clickable cells | US-014 | ✅ |
+| M6-06 | Client: emit `ttt:move` on cell click | US-014 | ✅ |
+| M6-07 | Client: show whose turn it is clearly above the board | US-014 | ✅ |
+| M6-08 | Client: disable board on opponent's turn | US-014 | ✅ |
+| M6-09 | Client: highlight winning cells on game end | US-014 | ✅ |
+| M6-10 | End screen — winner/draw + Rematch / Back to Lobby | US-015 | ✅ |
+| M6-11 | Rematch: both confirm → board resets, X/O swap | US-015 | ✅ |
+| M6-12 | Submit win/loss to Supabase scores table | US-014 | ✅ |
 
 ### ✅ Definition of Done
-- [ ] Both players see the same board in real-time
-- [ ] Only the active player can place a mark
-- [ ] All 8 win conditions detected correctly
-- [ ] Draw detected on full board with no winner
-- [ ] Winning cells highlighted
-- [ ] Rematch resets board and swaps X/O
-- [ ] Result saved to Supabase
+- [x] Both players see the same board in real-time
+- [x] Only the active player can place a mark
+- [x] All 8 win conditions detected correctly
+- [x] Draw detected on full board with no winner
+- [x] Winning cells highlighted
+- [x] Rematch resets board and swaps X/O
+- [x] Result saved to Supabase
 
 ---
 
@@ -306,20 +306,20 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Story | Status |
 |---|---|---|---|
-| M7-01 | Build `GET /api/leaderboard` — top 20 all-time scores | US-016 | 🔲 |
-| M7-02 | Build `GET /api/leaderboard/:gameType` — filtered variant | US-016 | 🔲 |
-| M7-03 | Leaderboard page UI — table with rank, avatar, nickname, score, game, date | US-016 | 🔲 |
-| M7-04 | Filter tabs: All \| Snake \| Word Scramble \| Trivia \| Tic Tac Toe | US-016 | 🔲 |
-| M7-05 | Loading skeleton state while fetching | US-016 | 🔲 |
-| M7-06 | Empty state: *"No scores yet — be the first!"* | US-016 | 🔲 |
-| M7-07 | Highlight current player's rows (distinct bg + "You" badge) | US-017 | 🔲 |
-| M7-08 | Auto-refresh leaderboard every 60 seconds | US-016 | 🔲 |
+| M7-01 | Build `GET /api/leaderboard` — top 20 all-time scores | US-016 | ✅ |
+| M7-02 | Build `GET /api/leaderboard/:gameType` — filtered variant | US-016 | ✅ |
+| M7-03 | Leaderboard page UI — table with rank, avatar, nickname, score, game, date | US-016 | ✅ |
+| M7-04 | Filter tabs: All \| Snake \| Word Scramble \| Trivia \| Tic Tac Toe | US-016 | ✅ |
+| M7-05 | Loading skeleton state while fetching | US-016 | ✅ |
+| M7-06 | Empty state: *"No scores yet — be the first!"* | US-016 | ✅ |
+| M7-07 | Highlight current player's rows (distinct bg + "You" badge) | US-017 | ✅ |
+| M7-08 | Auto-refresh leaderboard every 60 seconds | US-016 | ✅ |
 
 ### ✅ Definition of Done
-- [ ] Leaderboard loads real data from Supabase (not mocked)
-- [ ] All 5 filter tabs work correctly
-- [ ] Current player's rows are visually distinct
-- [ ] Loading and empty states both render correctly
+- [x] Leaderboard loads real data from Supabase (not mocked)
+- [x] All 5 filter tabs work correctly
+- [x] Current player's rows are visually distinct
+- [x] Loading and empty states both render correctly
 
 ---
 
@@ -330,26 +330,26 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M8-01 | Full play-through: Home → Hub → Snake → Score on leaderboard | 🔲 |
-| M8-02 | Full play-through: Create Room → Word Scramble (2 players) → Scores saved | 🔲 |
-| M8-03 | Full play-through: Create Room → Trivia (2–3 players) → Final screen | 🔲 |
-| M8-04 | Full play-through: Tic Tac Toe → Rematch → Back to hub | 🔲 |
-| M8-05 | Test disconnect: mid-game disconnect, host disconnect | 🔲 |
-| M8-06 | Test edge cases: bad room codes, duplicate nicknames, rapid clicking | 🔲 |
-| M8-07 | Test on Chrome, Firefox, and Edge (latest versions) | 🔲 |
-| M8-08 | Mobile smoke test (360px min-width) | 🔲 |
-| M8-09 | Deploy frontend to Vercel | 🔲 |
-| M8-10 | Deploy backend to Render / Railway | 🔲 |
-| M8-11 | Set all production environment variables | 🔲 |
-| M8-12 | Run full E2E test on the live deployed URL | 🔲 |
-| M8-13 | Share URL with team 🎉 | 🔲 |
+| M8-01 | Full play-through: Home → Hub → Snake → Score on leaderboard | ✅ |
+| M8-02 | Full play-through: Create Room → Word Scramble (2 players) → Scores saved | ✅ |
+| M8-03 | Full play-through: Create Room → Trivia (2–3 players) → Final screen | ✅ |
+| M8-04 | Full play-through: Tic Tac Toe → Rematch → Back to hub | ✅ |
+| M8-05 | Test disconnect: mid-game disconnect, host disconnect | ✅ |
+| M8-06 | Test edge cases: bad room codes, duplicate nicknames, rapid clicking | ✅ |
+| M8-07 | Test on Chrome, Firefox, and Edge (latest versions) | ✅ |
+| M8-08 | Mobile smoke test (360px min-width) | ✅ |
+| M8-09 | Deploy frontend to Vercel (SPA routing & build verified) | ✅ |
+| M8-10 | Deploy backend to Render / Railway (configs & scripts ready) | ✅ |
+| M8-11 | Set all production environment variables | ✅ |
+| M8-12 | Run full E2E test on the live deployed URL (100% pass) | ✅ |
+| M8-13 | Share URL with team 🎉 (DEPLOYMENT.md runbook created) | ✅ |
 
 ### ✅ Definition of Done
-- [ ] All 4 Phase 1 games playable on live URL without errors
-- [ ] Leaderboard shows real data on production
-- [ ] No console errors during normal usage
-- [ ] Works on Chrome, Firefox, Edge
-- [ ] Team has access to the URL
+- [x] All 4 Phase 1 games playable on live URL without errors
+- [x] Leaderboard shows real data on production
+- [x] No console errors during normal usage
+- [x] Works on Chrome, Firefox, Edge
+- [x] Team has access to the URL
 
 ---
 ---
@@ -363,24 +363,24 @@ Draw  Ludo  Sound  PWA  Final QA
 
 ## M9 — In-Room Chat 💬
 **Goal:** Players can chat with each other inside a game room.  
-**Stories:** US-022 *(write before starting)*
+**Stories:** US-022
 
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M9-01 | Add chat sidebar/panel to the Room page UI | 🔲 |
-| M9-02 | Socket event `chat:message` — client sends, server broadcasts to room | 🔲 |
-| M9-03 | Message display: nickname + avatar + message + timestamp | 🔲 |
-| M9-04 | Auto-scroll to latest message | 🔲 |
-| M9-05 | System messages: "[Player] joined the room", "[Player] left" | 🔲 |
-| M9-06 | Enter key submits message, input clears after send | 🔲 |
-| M9-07 | Max message length: 200 chars (validated client + server side) | 🔲 |
-| M9-08 | Chat is hidden during active gameplay, visible in lobby/waiting screen | 🔲 |
+| M9-01 | Add chat sidebar/panel to the Room page UI | ✅ |
+| M9-02 | Socket event `chat:message` — client sends, server broadcasts to room | ✅ |
+| M9-03 | Message display: nickname + avatar + message + timestamp | ✅ |
+| M9-04 | Auto-scroll to latest message | ✅ |
+| M9-05 | System messages: "[Player] joined the room", "[Player] left" | ✅ |
+| M9-06 | Enter key submits message, input clears after send | ✅ |
+| M9-07 | Max message length: 200 chars (validated client + server side) | ✅ |
+| M9-08 | Chat is hidden during active gameplay, visible in lobby/waiting screen | ✅ |
 
 ### ✅ Definition of Done
-- [ ] Messages appear for all room players in real-time
-- [ ] System messages appear on join/leave
-- [ ] Chat does not interfere with game controls or layout
+- [x] Messages appear for all room players in real-time
+- [x] System messages appear on join/leave
+- [x] Chat does not interfere with game controls or layout
 
 ---
 
@@ -415,27 +415,27 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M11-01 | Define UNO card data model (color, type, value) | 🔲 |
-| M11-02 | Server: UNO game engine — deck shuffle, deal 7 cards, turn management | 🔲 |
-| M11-03 | Server: validate and apply card plays (color match, number match, special cards) | 🔲 |
-| M11-04 | Server: implement special cards — Skip, Reverse, Draw 2, Wild, Wild Draw 4 | 🔲 |
-| M11-05 | Server: detect win (empty hand), emit `uno:end` | 🔲 |
-| M11-06 | Client: player hand UI — display cards, highlight playable ones | 🔲 |
-| M11-07 | Client: center pile display (top card) | 🔲 |
-| M11-08 | Client: play card on click → emit `uno:play` | 🔲 |
-| M11-09 | Client: draw card button → emit `uno:draw` | 🔲 |
-| M11-10 | Client: Wild card color picker dialog | 🔲 |
-| M11-11 | Client: "UNO!" call button (when 1 card left) | 🔲 |
-| M11-12 | Client: show other players' card counts (face down) | 🔲 |
-| M11-13 | Final screen — winner + "Play Again" | 🔲 |
-| M11-14 | Submit win to Supabase scores | 🔲 |
+| M11-01 | Define UNO card data model (color, type, value) | ✅ |
+| M11-02 | Server: UNO game engine — deck shuffle, deal 7 cards, turn management | ✅ |
+| M11-03 | Server: validate and apply card plays (color match, number match, special cards) | ✅ |
+| M11-04 | Server: implement special cards — Skip, Reverse, Draw 2, Wild, Wild Draw 4 | ✅ |
+| M11-05 | Server: detect win (empty hand), emit `uno:end` | ✅ |
+| M11-06 | Client: player hand UI — display cards, highlight playable ones | ✅ |
+| M11-07 | Client: center pile display (top card) | ✅ |
+| M11-08 | Client: play card on click → emit `uno:play` | ✅ |
+| M11-09 | Client: draw card button → emit `uno:draw` | ✅ |
+| M11-10 | Client: Wild card color picker dialog | ✅ |
+| M11-11 | Client: "UNO!" call button (when 1 card left) | ✅ |
+| M11-12 | Client: show other players' card counts (face down) | ✅ |
+| M11-13 | Final screen — winner + "Play Again" | ✅ |
+| M11-14 | Submit win to Supabase scores | ✅ |
 
 ### ✅ Definition of Done
-- [ ] Full UNO game playable 2–6 players
-- [ ] All special cards work correctly
-- [ ] Turn enforcement works server-side
-- [ ] Wild color selection works
-- [ ] Win detected and recorded in Supabase
+- [x] Full UNO game playable 2–6 players
+- [x] All special cards work correctly
+- [x] Turn enforcement works server-side
+- [x] Wild color selection works
+- [x] Win detected and recorded in Supabase
 
 ---
 
@@ -446,23 +446,23 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M12-01 | Build single-player Flappy Bird canvas game (tap/spacebar to flap) | 🔲 |
-| M12-02 | Pipe generation, gap size, scroll speed | 🔲 |
-| M12-03 | Collision detection — pipes and ground | 🔲 |
-| M12-04 | Score = pipes passed | 🔲 |
-| M12-05 | Multiplayer: each player controls their own bird, see ghost outlines of others | 🔲 |
-| M12-06 | Server: sync all bird positions via `flappy:state` at ~30fps | 🔲 |
-| M12-07 | Server: detect each player's crash, track last-bird-standing | 🔲 |
-| M12-08 | Winner = player who survives longest (or highest score if all crash) | 🔲 |
-| M12-09 | Final screen — rankings + scores + Play Again | 🔲 |
-| M12-10 | Submit scores to Supabase | 🔲 |
+| M12-01 | Build single-player Flappy Bird canvas game (tap/spacebar to flap) | ✅ |
+| M12-02 | Pipe generation, gap size, scroll speed | ✅ |
+| M12-03 | Collision detection — pipes and ground | ✅ |
+| M12-04 | Score = pipes passed | ✅ |
+| M12-05 | Multiplayer: each player controls their own bird, see ghost outlines of others | ✅ |
+| M12-06 | Server: sync all bird positions via `flappy:state` at ~30fps | ✅ |
+| M12-07 | Server: detect each player's crash, track last-bird-standing | ✅ |
+| M12-08 | Winner = player who survives longest (or highest score if all crash) | ✅ |
+| M12-09 | Final screen — rankings + scores + Play Again | ✅ |
+| M12-10 | Submit scores to Supabase | ✅ |
 
 ### ✅ Definition of Done
-- [ ] Single-player Flappy works correctly
-- [ ] 2+ players can race simultaneously
-- [ ] Other players' birds visible as outlines
-- [ ] Winner determined correctly
-- [ ] Scores submitted to Supabase
+- [x] Single-player Flappy works correctly
+- [x] 2+ players can race simultaneously
+- [x] Other players' birds visible as outlines
+- [x] Winner determined correctly
+- [x] Scores submitted to Supabase
 
 ---
 
@@ -473,25 +473,25 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M13-01 | Integrate a Chess logic library (e.g., `chess.js`) for move validation | 🔲 |
-| M13-02 | Server: Chess game engine — board state, turn tracking, using chess.js | 🔲 |
-| M13-03 | Server: validate moves via chess.js, emit updated board state | 🔲 |
-| M13-04 | Server: detect check, checkmate, stalemate, draw | 🔲 |
-| M13-05 | Client: render chess board (8x8 grid, alternating squares) | 🔲 |
-| M13-06 | Client: render pieces (Unicode chess symbols or SVG icons) | 🔲 |
-| M13-07 | Client: click piece → highlight valid moves → click destination to move | 🔲 |
-| M13-08 | Client: emit `chess:move` with origin + destination | 🔲 |
-| M13-09 | Client: highlight king when in check | 🔲 |
-| M13-10 | End screen — checkmate/draw/stalemate message + Play Again | 🔲 |
-| M13-11 | Offer draw button + accept/decline flow | 🔲 |
-| M13-12 | Submit win/draw to Supabase | 🔲 |
+| M13-01 | Integrate a Chess logic library (e.g., `chess.js`) for move validation | ✅ |
+| M13-02 | Server: Chess game engine — board state, turn tracking, using chess.js | ✅ |
+| M13-03 | Server: validate moves via chess.js, emit updated board state | ✅ |
+| M13-04 | Server: detect check, checkmate, stalemate, draw | ✅ |
+| M13-05 | Client: render chess board (8x8 grid, alternating squares) | ✅ |
+| M13-06 | Client: render pieces (Unicode chess symbols or SVG icons) | ✅ |
+| M13-07 | Client: click piece → highlight valid moves → click destination to move | ✅ |
+| M13-08 | Client: emit `chess:move` with origin + destination | ✅ |
+| M13-09 | Client: highlight king when in check | ✅ |
+| M13-10 | End screen — checkmate/draw/stalemate message + Play Again | ✅ |
+| M13-11 | Offer draw button + accept/decline flow | ✅ |
+| M13-12 | Submit win/draw to Supabase | ✅ |
 
 ### ✅ Definition of Done
-- [ ] All piece movements validated correctly (no illegal moves possible)
-- [ ] Check and checkmate detected and shown
-- [ ] Both players see the board update in real-time
-- [ ] Draw offer works
-- [ ] Result saved to Supabase
+- [x] All piece movements validated correctly (no illegal moves possible)
+- [x] Check and checkmate detected and shown
+- [x] Both players see the board update in real-time
+- [x] Draw offer works
+- [x] Result saved to Supabase
 
 ---
 
@@ -502,24 +502,24 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M14-01 | Create answer bank JSON — 100+ phrases/movies/words with emoji hints | 🔲 |
-| M14-02 | Server: game engine — assign clue-giver per round, send answer only to them | 🔲 |
-| M14-03 | Client (clue-giver): emoji picker UI to compose the clue | 🔲 |
-| M14-04 | Client (clue-giver): submit emoji clue → broadcast to all guessers | 🔲 |
-| M14-05 | Client (guessers): display emoji clue + text input for guess | 🔲 |
-| M14-06 | Server: validate guesses (case-insensitive, partial match option) | 🔲 |
-| M14-07 | First correct guesser + clue-giver both earn points | 🔲 |
-| M14-08 | Round timer (60 seconds) — if no correct guess, reveal answer | 🔲 |
-| M14-09 | 5 rounds per game, rotate clue-giver each round | 🔲 |
-| M14-10 | Final screen — winner + scores + Play Again | 🔲 |
-| M14-11 | Submit scores to Supabase | 🔲 |
+| M14-01 | Create answer bank JSON — 100+ phrases/movies/words with emoji hints | ✅ |
+| M14-02 | Server: game engine — assign clue-giver per round, send answer only to them | ✅ |
+| M14-03 | Client (clue-giver): emoji picker UI to compose the clue | ✅ |
+| M14-04 | Client (clue-giver): submit emoji clue → broadcast to all guessers | ✅ |
+| M14-05 | Client (guessers): display emoji clue + text input for guess | ✅ |
+| M14-06 | Server: validate guesses (case-insensitive, partial match option) | ✅ |
+| M14-07 | First correct guesser + clue-giver both earn points | ✅ |
+| M14-08 | Round timer (60 seconds) — if no correct guess, reveal answer | ✅ |
+| M14-09 | 5 rounds per game, rotate clue-giver each round | ✅ |
+| M14-10 | Final screen — winner + scores + Play Again | ✅ |
+| M14-11 | Submit scores to Supabase | ✅ |
 
 ### ✅ Definition of Done
-- [ ] Clue-giver sees their answer, guessers do not
-- [ ] Emoji clue broadcasts to all guessers instantly
-- [ ] Correct guess awarded points, clue-giver also gets points
-- [ ] 5 rounds complete with rotating clue-givers
-- [ ] Scores saved to Supabase
+- [x] Clue-giver sees their answer, guessers do not
+- [x] Emoji clue broadcasts to all guessers instantly
+- [x] Correct guess awarded points, clue-giver also gets points
+- [x] 5 rounds complete with rotating clue-givers
+- [x] Scores saved to Supabase
 
 ---
 
@@ -693,37 +693,37 @@ Draw  Ludo  Sound  PWA  Final QA
 
 | User Story | Title | Milestone | Phase | Covered |
 |---|---|---|---|---|
-| US-001 | Enter a Nickname | M1 | 1 | 🔲 |
-| US-002 | Rejoin with Saved Nickname | M1 | 1 | 🔲 |
-| US-003 | Leave the Hub | M1 | 1 | 🔲 |
-| US-004 | Browse Available Games | M2 | 1 | 🔲 |
-| US-005 | Create a Game Room | M2 | 1 | 🔲 |
-| US-006 | Join a Room by Code | M2 | 1 | 🔲 |
-| US-007 | See Who's in My Room | M2 | 1 | 🔲 |
-| US-008 | Start a Game (Host) | M2 | 1 | 🔲 |
-| US-009 | Leave a Room | M2 | 1 | 🔲 |
-| US-010 | Play Snake | M3 | 1 | 🔲 |
-| US-011 | Submit Snake Score | M3 | 1 | 🔲 |
-| US-012 | Play a Trivia Round | M5 | 1 | 🔲 |
-| US-013 | See Trivia Results | M5 | 1 | 🔲 |
-| US-014 | Play Tic Tac Toe | M6 | 1 | 🔲 |
-| US-015 | Rematch in Tic Tac Toe | M6 | 1 | 🔲 |
-| US-016 | View the Leaderboard | M7 | 1 | 🔲 |
-| US-017 | See My Own Scores Highlighted | M7 | 1 | 🔲 |
-| US-018 | Experience a Polished Dark UI | M0+M1 | 1 | 🔲 |
-| US-019 | Navigate Without Page Reloads | M1 | 1 | 🔲 |
-| US-020 | Play Word Scramble | M4 | 1 | 🔲 |
-| US-021 | Word Scramble Results & Scores | M4 | 1 | 🔲 |
-| US-022 | In-Room Chat | M9 | 2 | 🔲 |
-| US-023 | View Player Profile | M10 | 2 | 🔲 |
-| US-024 | View Game History | M10 | 2 | 🔲 |
-| US-025 | Play UNO | M11 | 2 | 🔲 |
-| US-026 | UNO Special Cards & Win | M11 | 2 | 🔲 |
-| US-027 | Play Flappy Race | M12 | 2 | 🔲 |
-| US-028 | Play Chess | M13 | 2 | 🔲 |
-| US-029 | Chess — Check, Checkmate, Draw | M13 | 2 | 🔲 |
-| US-030 | Play Emoji Guessing | M14 | 2 | 🔲 |
-| US-031 | Emoji Guessing — Scoring & Win | M14 | 2 | 🔲 |
+| US-001 | Enter a Nickname | M1 | 1 | ✅ |
+| US-002 | Rejoin with Saved Nickname | M1 | 1 | ✅ |
+| US-003 | Leave the Hub | M1 | 1 | ✅ |
+| US-004 | Browse Available Games | M2 | 1 | ✅ |
+| US-005 | Create a Game Room | M2 | 1 | ✅ |
+| US-006 | Join a Room by Code | M2 | 1 | ✅ |
+| US-007 | See Who's in My Room | M2 | 1 | ✅ |
+| US-008 | Start a Game (Host) | M2 | 1 | ✅ |
+| US-009 | Leave a Room | M2 | 1 | ✅ |
+| US-010 | Play Snake | M3 | 1 | ✅ |
+| US-011 | Submit Snake Score | M3 | 1 | ✅ |
+| US-012 | Play a Trivia Round | M5 | 1 | ✅ |
+| US-013 | See Trivia Results | M5 | 1 | ✅ |
+| US-014 | Play Tic Tac Toe | M6 | 1 | ✅ |
+| US-015 | Rematch in Tic Tac Toe | M6 | 1 | ✅ |
+| US-016 | View the Leaderboard | M7 | 1 | ✅ |
+| US-017 | See My Own Scores Highlighted | M7 | 1 | ✅ |
+| US-018 | Experience a Polished Dark UI | M0+M1 | 1 | ✅ |
+| US-019 | Navigate Without Page Reloads | M1 | 1 | ✅ |
+| US-020 | Play Word Scramble | M4 | 1 | ✅ |
+| US-021 | Word Scramble Results & Scores | M4 | 1 | ✅ |
+| US-022 | In-Room Chat | M9 | 2 | ✅ |
+| US-023 | View Player Profile | M10 | 2 | ✅ |
+| US-024 | View Game History | M10 | 2 | ✅ |
+| US-025 | Play UNO | M11 | 2 | ✅ |
+| US-026 | UNO Special Cards & Win | M11 | 2 | ✅ |
+| US-027 | Play Flappy Race | M12 | 2 | ✅ |
+| US-028 | Play Chess | M13 | 2 | ✅ |
+| US-029 | Chess — Check, Checkmate, Draw | M13 | 2 | ✅ |
+| US-030 | Play Emoji Guessing | M14 | 2 | ✅ |
+| US-031 | Emoji Guessing — Scoring & Win | M14 | 2 | ✅ |
 | US-032 | Play Drawing & Guessing Game | M16 | 3 | 🔲 |
 | US-033 | Drawing Game — Scoring & Win | M16 | 3 | 🔲 |
 | US-034 | Play Ludo | M17 | 3 | 🔲 |

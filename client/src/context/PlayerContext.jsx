@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components, react/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import socket from '../socket/socket.js';
 import { validateNickname } from '../utils/validation.js';

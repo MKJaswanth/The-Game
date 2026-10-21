@@ -1,13 +1,23 @@
 import { startWordScrambleGame, stopWordScrambleGame } from './games/wordscramble.js';
 import { startTriviaGame, stopTriviaGame } from './games/trivia.js';
+import { startTTTGame, stopTTTGame, handleTTTPlayerLeave } from './games/tictactoe.js';
+import { startUnoGame, stopUnoGame, handleUnoPlayerLeave } from './games/uno.js';
+import { startFlappyGame, stopFlappyGame, handleFlappyPlayerLeave } from './games/flappy.js';
+import { startChessGame, stopChessGame, handleChessPlayerLeave } from './games/chess.js';
+import { startEmojiGame, stopEmojiGame, handleEmojiPlayerLeave } from './games/emoji.js';
+import { broadcastSystemMessage } from './chat.js';
 
 const rooms = new Map();
 
 const GAME_CAPACITIES = {
   snake: { min: 1, max: 1 },
-  tictactoe: { min: 2, max: 2 },
+  tictactoe: { min: 1, max: 2 },
   wordscramble: { min: 1, max: 6 },
-  trivia: { min: 1, max: 8 }
+  trivia: { min: 1, max: 8 },
+  uno: { min: 2, max: 6 },
+  flappy: { min: 1, max: 4 },
+  chess: { min: 2, max: 2 },
+  emoji: { min: 2, max: 8 }
 };
 
 export function generateRoomCode() {
@@ -84,6 +94,18 @@ export function registerRoomHandlers(io, socket) {
       io.to(roomCode).emit('game:start', { roomCode, gameType, players: newRoom.players });
       if (gameType === 'wordscramble') {
         startWordScrambleGame(io, roomCode);
+      } else if (gameType === 'trivia') {
+        startTriviaGame(io, roomCode);
+      } else if (gameType === 'tictactoe') {
+        startTTTGame(io, roomCode);
+      } else if (gameType === 'uno') {
+        startUnoGame(io, roomCode);
+      } else if (gameType === 'flappy') {
+        startFlappyGame(io, roomCode);
+      } else if (gameType === 'chess') {
+        startChessGame(io, roomCode);
+      } else if (gameType === 'emoji') {
+        startEmojiGame(io, roomCode);
       }
     }
   });
@@ -131,6 +153,11 @@ export function registerRoomHandlers(io, socket) {
 
     socket.join(code);
     console.log(`[Rooms] Player ${nickname} joined room ${code}. Total players: ${room.players.length}`);
+
+    // M9-05: System message — player joined
+    if (!existingPlayer) {
+      broadcastSystemMessage(io, code, `${nickname} joined the room`);
+    }
 
     const res = { success: true, roomCode: code, room };
     if (typeof callback === 'function') callback(res);
@@ -182,6 +209,16 @@ export function registerRoomHandlers(io, socket) {
       startWordScrambleGame(io, code);
     } else if (room.gameType === 'trivia') {
       startTriviaGame(io, code);
+    } else if (room.gameType === 'tictactoe') {
+      startTTTGame(io, code);
+    } else if (room.gameType === 'uno') {
+      startUnoGame(io, code);
+    } else if (room.gameType === 'flappy') {
+      startFlappyGame(io, code);
+    } else if (room.gameType === 'chess') {
+      startChessGame(io, code);
+    } else if (room.gameType === 'emoji') {
+      startEmojiGame(io, code);
     }
   });
 
@@ -197,9 +234,16 @@ export function registerRoomHandlers(io, socket) {
       if (room.players.length === 0) {
         stopWordScrambleGame(code);
         stopTriviaGame(code);
+        stopTTTGame(code);
+        stopUnoGame(code);
+        stopFlappyGame(code);
+        stopChessGame(code);
+        stopEmojiGame(code);
         rooms.delete(code);
         console.log(`[Rooms] Deleted empty room ${code}`);
       } else {
+        // M9-05: System message — player left
+        broadcastSystemMessage(io, code, `${nickname} left the room`);
         // If host left, transfer host role to the next player
         if (room.hostSocketId === socket.id || room.hostNickname === nickname) {
           room.players[0].isHost = true;
@@ -207,6 +251,11 @@ export function registerRoomHandlers(io, socket) {
           room.hostSocketId = room.players[0].socketId;
           console.log(`[Rooms] Transferred host in room ${code} to ${room.hostNickname}`);
         }
+        handleTTTPlayerLeave(io, code, nickname);
+        handleUnoPlayerLeave(io, code, nickname);
+        handleFlappyPlayerLeave(io, code, nickname);
+        handleChessPlayerLeave(io, code, nickname);
+        handleEmojiPlayerLeave(io, code, nickname);
         io.to(code).emit('room:state', room);
       }
     }
@@ -226,6 +275,11 @@ export function registerRoomHandlers(io, socket) {
         if (room.players.length === 0) {
           stopWordScrambleGame(code);
           stopTriviaGame(code);
+          stopTTTGame(code);
+          stopUnoGame(code);
+          stopFlappyGame(code);
+          stopChessGame(code);
+          stopEmojiGame(code);
           rooms.delete(code);
           console.log(`[Rooms] Deleted empty room ${code}`);
         } else {
@@ -235,6 +289,13 @@ export function registerRoomHandlers(io, socket) {
             room.hostSocketId = room.players[0].socketId;
             console.log(`[Rooms] Host disconnected; transferred host to ${room.hostNickname}`);
           }
+          // M9-05: System message — player disconnected
+          broadcastSystemMessage(io, code, `${leavingPlayer.nickname} disconnected`);
+          handleTTTPlayerLeave(io, code, leavingPlayer.nickname);
+          handleUnoPlayerLeave(io, code, leavingPlayer.nickname);
+          handleFlappyPlayerLeave(io, code, leavingPlayer.nickname);
+          handleChessPlayerLeave(io, code, leavingPlayer.nickname);
+          handleEmojiPlayerLeave(io, code, leavingPlayer.nickname);
           io.to(code).emit('room:state', room);
         }
       }

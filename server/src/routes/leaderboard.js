@@ -4,8 +4,11 @@ import { supabase, isSupabaseConfigured } from '../db/supabase.js';
 
 const router = Router();
 
-router.get('/', async (req, res) => {
-  const { gameType } = req.query;
+/**
+ * Fetch top 20 leaderboard entries, optionally filtered by gameType
+ */
+async function getLeaderboardData(gameType) {
+  const cleanType = gameType && gameType.toLowerCase() !== 'all' ? gameType.toLowerCase().trim() : null;
 
   if (isSupabaseConfigured && supabase) {
     try {
@@ -24,8 +27,8 @@ router.get('/', async (req, res) => {
         .order('score', { ascending: false })
         .limit(20);
 
-      if (gameType) {
-        query = query.eq('game_type', gameType);
+      if (cleanType) {
+        query = query.eq('game_type', cleanType);
       }
 
       const { data, error } = await query;
@@ -39,7 +42,7 @@ router.get('/', async (req, res) => {
           won: item.won,
           playedAt: item.played_at
         }));
-        return res.json({ success: true, leaderboard: mapped });
+        return mapped;
       }
     } catch (dbErr) {
       console.warn(`[Leaderboard DB Error] Falling back to in-memory: ${dbErr.message}`);
@@ -48,20 +51,42 @@ router.get('/', async (req, res) => {
 
   // Fallback to in-memory store
   let filtered = [...inMemoryScores];
-  if (gameType) {
-    filtered = filtered.filter(s => s.gameType.toLowerCase() === gameType.toLowerCase());
+  if (cleanType) {
+    filtered = filtered.filter(s => s.gameType.toLowerCase() === cleanType);
   }
 
   filtered.sort((a, b) => b.score - a.score);
-  const top20 = filtered.slice(0, 20).map((item, idx) => ({
+  return filtered.slice(0, 20).map((item, idx) => ({
     rank: idx + 1,
-    ...item
+    id: item.id,
+    nickname: item.nickname,
+    gameType: item.gameType,
+    score: item.score,
+    won: item.won,
+    playedAt: item.playedAt
   }));
+}
 
-  return res.json({
-    success: true,
-    leaderboard: top20
-  });
+// GET /api/leaderboard (with optional ?gameType= query)
+router.get('/', async (req, res) => {
+  try {
+    const { gameType } = req.query;
+    const leaderboard = await getLeaderboardData(gameType);
+    return res.json({ success: true, leaderboard });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/leaderboard/:gameType
+router.get('/:gameType', async (req, res) => {
+  try {
+    const { gameType } = req.params;
+    const leaderboard = await getLeaderboardData(gameType);
+    return res.json({ success: true, leaderboard });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 export default router;

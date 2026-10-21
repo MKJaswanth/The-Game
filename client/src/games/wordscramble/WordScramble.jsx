@@ -180,13 +180,13 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
           setHasGuessedCorrectly(true);
           setFeedback({
             type: 'success',
-            message: `🎉 Correct! +${res.points} pts (Speed Bonus: +${res.speedBonus} pts)`
+            message: `Correct! +${res.points} pts (Speed Bonus: +${res.speedBonus} pts)`
           });
         } else {
           setIsShaking(true);
           setFeedback({
             type: 'error',
-            message: '❌ Not quite! Keep trying...'
+            message: 'Not quite! Keep trying...'
           });
           setTimeout(() => setIsShaking(false), 500);
         }
@@ -210,7 +210,6 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
       {/* Header bar: Round, Category, and Live Countdown */}
       <div className="scramble-header">
         <div className="scramble-round-info">
-          <span style={{ fontSize: '1.4rem' }}>🔤</span>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <span className="scramble-round-pill">
@@ -221,15 +220,15 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
               </Badge>
               {round === totalRounds ? (
                 <Badge variant="warning" style={{ fontWeight: 800 }}>
-                  🔥 FINAL ROUND
+                  FINAL ROUND
                 </Badge>
               ) : (
-                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                <span style={{ fontSize: 'var(--t-xs)', color: 'var(--text-2)', fontWeight: 600 }}>
                   ({totalRounds - round} {totalRounds - round === 1 ? 'round' : 'rounds'} left)
                 </span>
               )}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--color-text-dim)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>
               {round === totalRounds ? 'Game concludes after this word!' : `Match ends automatically after Round ${totalRounds}`}
             </div>
           </div>
@@ -237,7 +236,6 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
 
         <div className="scramble-timer-container">
           <div className={`scramble-timer-badge ${isUrgent ? 'urgent' : ''}`}>
-            <span>⏱️</span>
             <span>{timeLeft}s</span>
           </div>
         </div>
@@ -245,7 +243,7 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
 
       {/* 10-Step Visual Round Stepper */}
       <div className="scramble-stepper-wrap">
-        <span style={{ fontSize: '10px', color: 'var(--color-text-dim)', fontWeight: 700, marginRight: '4px' }}>
+        <span style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 700, marginRight: '4px' }}>
           ROUNDS:
         </span>
         {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => {
@@ -287,7 +285,7 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
             </div>
           )}
 
-          <h2 style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+          <h2 style={{ fontSize: 'var(--t-base)', color: 'var(--text-2)', marginBottom: 'var(--s2)', fontWeight: 500 }}>
             Unscramble the letters to reveal the word:
           </h2>
 
@@ -338,7 +336,7 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
             )}
             {hasGuessedCorrectly && (
               <div className="scramble-feedback waiting">
-                ⏳ Waiting for teammates or timer to finish...
+                Waiting for teammates or timer to finish...
               </div>
             )}
           </div>
@@ -348,45 +346,43 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
       {/* ROUND RESULT / INTERMISSION STATE */}
       {gameState === 'round_result' && (
         <div className="scramble-intermission-card card">
-          <span style={{ fontSize: '2rem' }}>✨</span>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-text-muted)', marginTop: 'var(--space-2)' }}>
+          <h3 style={{ fontSize: 'var(--t-xs)', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 'var(--s2)' }}>
             The word was:
           </h3>
           <div className="scramble-reveal-word">{revealedWord}</div>
 
           <div style={{ marginTop: 'var(--space-4)' }}>
-            <h4 style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-dim)', marginBottom: 'var(--space-2)' }}>
+            <h4 style={{ fontSize: 'var(--t-xs)', color: 'var(--text-3)', marginBottom: 'var(--s2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               SOLVED BY:
             </h4>
             <div className="scramble-solvers-list">
               {Object.keys(roundGuesses).length === 0 ? (
-                <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
-                  No one unscrambled it in time! ⌛
+                <div style={{ color: 'var(--text-2)', fontSize: 'var(--t-sm)' }}>
+                  No one unscrambled it in time
                 </div>
               ) : (
                 Object.entries(roundGuesses).map(([solver, info]) => (
                   <div key={solver} className="scramble-solver-chip">
-                    <span>⚡</span>
                     <span>{solver}</span>
                     <span style={{ opacity: 0.8 }}>({info.secondsTaken}s)</span>
-                    <strong style={{ color: '#fff' }}>+{info.points} pts</strong>
+                    <strong style={{ color: 'var(--accent-hi)' }}>+{info.points} pts</strong>
                   </div>
                 ))
               )}
             </div>
           </div>
 
-          <div style={{ marginTop: 'var(--space-6)', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+          <div style={{ marginTop: 'var(--s6)', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: 'var(--t-xs)', color: 'var(--text-2)' }}>
               {round < totalRounds
                 ? `Round ${round} of ${totalRounds} complete • ${totalRounds - round} ${totalRounds - round === 1 ? 'round' : 'rounds'} remaining until game ends!`
                 : 'Final Round complete! Calculating final scores...'}
             </div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-full)' }}>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-pill)' }}>
+              <span style={{ fontSize: 'var(--t-xs)', color: 'var(--text-2)' }}>
                 {round < totalRounds ? 'Next round in:' : 'Results in:'}
               </span>
-              <strong style={{ color: 'var(--color-accent-light)', fontSize: 'var(--font-size-base)' }}>
+              <strong style={{ color: 'var(--accent-hi)', fontSize: 'var(--t-base)' }}>
                 {nextRoundIn}s
               </strong>
             </div>
@@ -397,16 +393,16 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
       {/* GAME OVER STATE */}
       {gameState === 'game_over' && (
         <div className="scramble-gameover-card card">
-          <div className="scramble-trophy">🏆</div>
-          <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, marginBottom: 'var(--space-2)' }}>
-            Game Over!
+          <div className="scramble-trophy">★</div>
+          <h2 style={{ fontSize: 'var(--t-3xl)', fontWeight: 800, marginBottom: 'var(--s2)' }}>
+            Game Over
           </h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-base)' }}>
+          <p style={{ color: 'var(--text-2)', fontSize: 'var(--t-base)' }}>
             Winner:{' '}
-            <strong style={{ color: 'var(--color-accent-light)', fontSize: 'var(--font-size-lg)' }}>
+            <strong style={{ color: 'var(--accent-hi)', fontSize: 'var(--t-lg)' }}>
               {winner?.nickname || 'Everyone'}
             </strong>{' '}
-            with {winner?.score || 0} points! 🎉
+            with {winner?.score || 0} points
           </p>
 
           <table className="scramble-rankings-table">
@@ -420,8 +416,8 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
             <tbody>
               {rankings.map((rankPlayer, idx) => (
                 <tr key={rankPlayer.nickname}>
-                  <td>
-                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                  <td className="mono" style={{ color: idx < 3 ? 'var(--accent-hi)' : 'var(--text-3)' }}>
+                    {`${idx + 1}`.padStart(2, '0')}
                   </td>
                   <td>
                     <strong>{rankPlayer.nickname}</strong>
@@ -439,7 +435,7 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
             </tbody>
           </table>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-4)', marginTop: 'var(--space-6)' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--s4)', marginTop: 'var(--s6)' }}>
             {isHost && (
               <button
                 type="button"
@@ -447,7 +443,7 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
                 className="btn btn-primary"
                 onClick={handleRestart}
               >
-                🔄 Play Again
+                Play Again
               </button>
             )}
             <button
@@ -464,10 +460,10 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
       {/* Real-time Room Leaderboard */}
       <div className="scramble-scoreboard-card card">
         <div className="scramble-scoreboard-header">
-          <h4 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+          <h4 style={{ fontSize: 'var(--t-xs)', fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             ROOM LEADERBOARD
           </h4>
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-dim)' }}>
+          <span style={{ fontSize: 'var(--t-xs)', color: 'var(--text-3)' }}>
             {Object.keys(scores).length} players
           </span>
         </div>
@@ -487,10 +483,10 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                     <Avatar nickname={playerNick} size="sm" />
                     <div>
-                      <div style={{ fontSize: 'var(--font-size-xs)', fontWeight: 700 }}>
+                      <div style={{ fontSize: 'var(--t-xs)', fontWeight: 700 }}>
                         {playerNick} {isMe && '(You)'}
                       </div>
-                      <div style={{ fontSize: '10px', color: solvedThisRound ? '#34d399' : 'var(--color-text-dim)' }}>
+                      <div style={{ fontSize: '10px', color: solvedThisRound ? 'var(--green)' : 'var(--text-3)' }}>
                         {solvedThisRound ? 'Solved ✓' : 'Guessing...'}
                       </div>
                     </div>

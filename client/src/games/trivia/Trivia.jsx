@@ -60,7 +60,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
     if (!socket) return;
 
     // trivia:starting
-    const handleStarting = (data) => {
+    const handleStarting = () => {
       setGameState('starting');
       setScores({});
     };
@@ -129,7 +129,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
   }, [socket, roomCode]);
 
   // Submit Answer
-  const handleSelectOption = (index) => {
+  const handleSelectOption = useCallback((index) => {
     if (gameState !== 'question_active' || hasAnswered || !socket) return;
 
     setSelectedOption(index);
@@ -148,7 +148,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
         }
       }
     );
-  };
+  }, [gameState, hasAnswered, socket, roomCode, currentNick]);
 
   // Keyboard shortcut listener for options (1-4 or A-D)
   useEffect(() => {
@@ -164,7 +164,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, hasAnswered, socket, roomCode, currentNick]);
+  }, [gameState, hasAnswered, handleSelectOption]);
 
   const handleRestart = () => {
     if (!socket || !isHost) return;
@@ -184,7 +184,6 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       {/* HEADER & ROUND STEPPER */}
       <div className="trivia-header-card card">
         <div className="trivia-meta">
-          <span style={{ fontSize: '1.75rem' }}>🧠</span>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800 }}>
@@ -214,10 +213,9 @@ export default function Trivia({ roomCode, isHost, onExit }) {
         </div>
 
         {/* 15s Countdown Timer */}
-        <div className={`trivia-timer-badge ${isUrgent ? 'urgent' : ''}`}>
-          <span>⏱️</span>
-          <span>{timeLeft}s</span>
-        </div>
+            <div className="trivia-timer-badge">
+              <span>{timeLeft}s</span>
+            </div>
       </div>
 
       {/* 10-Step Visual Progress Stepper */}
@@ -261,9 +259,9 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       {/* STARTING STATE */}
       {gameState === 'starting' && (
         <div className="card" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)' }}>⏳</div>
+          <span className="spinner" style={{ width: 28, height: 28, borderWidth: 3, marginBottom: 'var(--s3)' }} />
           <h3>Preparing 10 Quiz Questions...</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', marginTop: 'var(--space-2)' }}>
+          <p style={{ color: 'var(--text-2)', fontSize: 'var(--t-sm)', marginTop: 'var(--s2)' }}>
             Syncing trivia engine with server
           </p>
         </div>
@@ -273,7 +271,6 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       {gameState === 'question_active' && questionData && (
         <div className="trivia-question-card card">
           <div className="trivia-question-category">
-            <span>🏷️</span>
             <span>{questionData.category} • {questionData.difficulty?.toUpperCase()}</span>
           </div>
 
@@ -298,7 +295,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
                 >
                   <span className="trivia-option-letter">{OPTION_LETTERS[idx]}</span>
                   <span style={{ flex: 1 }}>{optionText}</span>
-                  {isSelected && <span>🔒</span>}
+                  {isSelected && <span style={{ color: 'var(--text-3)' }}>●</span>}
                 </button>
               );
             })}
@@ -307,8 +304,8 @@ export default function Trivia({ roomCode, isHost, onExit }) {
           {/* Feedback status banner */}
           {hasAnswered ? (
             <div className="trivia-status-banner waiting">
-              <span>🔒 Answer locked in!</span>
-              <span>Waiting for opponents or timer to complete...</span>
+              <span style={{ color: 'var(--green)' }}>●</span>
+              <span>Answer locked in — waiting for opponents or timer...</span>
             </div>
           ) : (
             <div style={{ textAlign: 'center', marginTop: 'var(--space-4)', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-dim)' }}>
@@ -321,13 +318,12 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       {/* QUESTION RESULT / INTERMISSION STATE */}
       {gameState === 'question_result' && resultData && (
         <div className="trivia-intermission-card card">
-          <span style={{ fontSize: '2.5rem' }}>✨</span>
-          <h4 style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <h4 style={{ fontSize: 'var(--t-xs)', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Question {questionNumber} Result
           </h4>
 
           <div style={{ margin: 'var(--space-3) 0' }}>
-            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', display: 'block' }}>
+            <span style={{ fontSize: 'var(--t-xs)', color: 'var(--text-3)', display: 'block' }}>
               CORRECT ANSWER:
             </span>
             <div className="trivia-intermission-answer">
@@ -337,8 +333,8 @@ export default function Trivia({ roomCode, isHost, onExit }) {
 
           {/* Explanation if available */}
           {resultData.explanation && (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', maxWidth: '600px', margin: '0 auto var(--space-4)' }}>
-              💡 {resultData.explanation}
+            <p style={{ color: 'var(--text-2)', fontSize: 'var(--t-sm)', maxWidth: '600px', margin: '0 auto var(--s4)' }}>
+              {resultData.explanation}
             </p>
           )}
 
@@ -346,29 +342,29 @@ export default function Trivia({ roomCode, isHost, onExit }) {
           {selectedOption !== null && (
             <div style={{ marginBottom: 'var(--space-4)' }}>
               {selectedOption === resultData.correctIndex ? (
-                <Badge variant="success" style={{ fontSize: 'var(--font-size-sm)', padding: '6px 16px' }}>
-                  🎉 Correct! {myAnswerResult?.points ? `+${myAnswerResult.points} pts (Speed bonus: +${myAnswerResult.speedBonus || 0})` : '+100 pts'}
+                <Badge variant="success" style={{ fontSize: 'var(--t-sm)', padding: '6px 16px' }}>
+                  Correct! {myAnswerResult?.points ? `+${myAnswerResult.points} pts (Speed bonus: +${myAnswerResult.speedBonus || 0})` : '+100 pts'}
                 </Badge>
               ) : (
-                <Badge variant="danger" style={{ fontSize: 'var(--font-size-sm)', padding: '6px 16px' }}>
-                  ✗ Incorrect (0 pts)
+                <Badge variant="danger" style={{ fontSize: 'var(--t-sm)', padding: '6px 16px' }}>
+                  Incorrect (0 pts)
                 </Badge>
               )}
             </div>
           )}
 
           {/* Intermission round progression */}
-          <div style={{ marginTop: 'var(--space-4)', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+          <div style={{ marginTop: 'var(--s4)', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: 'var(--t-xs)', color: 'var(--text-2)' }}>
               {questionNumber < totalQuestions
                 ? `Question ${questionNumber} of ${totalQuestions} complete • ${questionsLeft} ${questionsLeft === 1 ? 'question' : 'questions'} remaining until match ends!`
                 : 'Final Question complete! Calculating final podium scores...'}
             </div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-full)' }}>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-pill)' }}>
+              <span style={{ fontSize: 'var(--t-xs)', color: 'var(--text-2)' }}>
                 {questionNumber < totalQuestions ? 'Next question in:' : 'Results in:'}
               </span>
-              <strong style={{ color: 'var(--color-accent-light)', fontSize: 'var(--font-size-base)' }}>
+              <strong style={{ color: 'var(--accent-hi)', fontSize: 'var(--t-base)' }}>
                 {nextQuestionIn}s
               </strong>
             </div>
@@ -379,16 +375,16 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       {/* GAME OVER STATE */}
       {gameState === 'game_over' && (
         <div className="trivia-gameover-card card">
-          <div className="trivia-trophy">🏆</div>
-          <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, marginBottom: 'var(--space-2)' }}>
-            Trivia Match Concluded!
+          <div className="trivia-trophy">★</div>
+          <h2 style={{ fontSize: 'var(--t-3xl)', fontWeight: 800, marginBottom: 'var(--s2)' }}>
+            Trivia Match Concluded
           </h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-base)' }}>
+          <p style={{ color: 'var(--text-2)', fontSize: 'var(--t-base)' }}>
             Champion:{' '}
-            <strong style={{ color: 'var(--color-accent-light)', fontSize: 'var(--font-size-lg)' }}>
+            <strong style={{ color: 'var(--accent-hi)', fontSize: 'var(--t-lg)' }}>
               {winner?.nickname || 'Everyone'}
             </strong>{' '}
-            with {winner?.score || 0} points! 🎉
+            with {winner?.score || 0} points
           </p>
 
           <table className="trivia-rankings-table">
@@ -401,16 +397,16 @@ export default function Trivia({ roomCode, isHost, onExit }) {
             </thead>
             <tbody>
               {rankings.map((player, index) => (
-                <tr key={player.nickname} style={{ background: index === 0 ? 'rgba(245, 158, 11, 0.08)' : 'transparent' }}>
-                  <td>
-                    {index === 0 ? '🥇 1st' : index === 1 ? '🥈 2nd' : index === 2 ? '🥉 3rd' : `${index + 1}th`}
+                <tr key={player.nickname} style={{ background: index === 0 ? 'var(--accent-dim)' : 'transparent' }}>
+                  <td className="mono">
+                    {index === 0 ? '01' : index === 1 ? '02' : index === 2 ? '03' : `${index + 1}`.padStart(2, '0')}
                   </td>
                   <td>
-                    <strong style={{ color: player.nickname === currentNick ? 'var(--color-accent-light)' : '#fff' }}>
+                    <strong style={{ color: player.nickname === currentNick ? 'var(--accent-hi)' : 'var(--text)' }}>
                       {player.nickname} {player.nickname === currentNick ? '(You)' : ''}
                     </strong>
                   </td>
-                  <td style={{ textAlign: 'right', color: 'var(--color-accent-light)', fontWeight: 800 }}>
+                  <td style={{ textAlign: 'right', color: 'var(--accent-hi)', fontWeight: 800, fontFamily: 'var(--mono)' }}>
                     {player.score} pts
                   </td>
                 </tr>
@@ -418,7 +414,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
             </tbody>
           </table>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-4)', marginTop: 'var(--space-6)' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--s4)', marginTop: 'var(--s6)' }}>
             {isHost && (
               <button
                 type="button"
@@ -426,7 +422,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
                 className="btn btn-primary"
                 onClick={handleRestart}
               >
-                🔄 Play Again
+                Play Again
               </button>
             )}
             <button
@@ -443,11 +439,11 @@ export default function Trivia({ roomCode, isHost, onExit }) {
 
       {/* LIVE ROOM LEADERBOARD ROW */}
       <div className="trivia-scoreboard-card card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
-          <h4 style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-dim)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s2)' }}>
+          <h4 style={{ fontSize: 'var(--t-xs)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)' }}>
             LIVE ROOM SCOREBOARD
           </h4>
-          <span style={{ fontSize: '10px', color: 'var(--color-text-dim)' }}>
+          <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>
             {Object.keys(scores).length} {Object.keys(scores).length === 1 ? 'Player' : 'Players'}
           </span>
         </div>
@@ -455,7 +451,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
         <div className="trivia-scoreboard-list">
           {Object.entries(scores)
             .sort(([, a], [, b]) => b - a)
-            .map(([nick, score], idx) => {
+            .map(([nick, score]) => {
               const isYou = nick === currentNick;
               const hasSubmitted = answeredPlayers.has(nick);
 
@@ -468,10 +464,10 @@ export default function Trivia({ roomCode, isHost, onExit }) {
                   <span>
                     {nick} {isYou ? '(You)' : ''}
                   </span>
-                  <strong style={{ color: 'var(--color-accent-light)' }}>{score}</strong>
+                  <strong style={{ color: 'var(--accent-hi)', fontFamily: 'var(--mono)' }}>{score}</strong>
                   {gameState === 'question_active' && (
                     <span style={{ fontSize: '10px' }} title={hasSubmitted ? 'Answered' : 'Thinking...'}>
-                      {hasSubmitted ? '✓' : '🤔'}
+                      {hasSubmitted ? '✓' : '…'}
                     </span>
                   )}
                 </div>

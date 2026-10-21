@@ -7,10 +7,10 @@
 
 ## 🟡 Current State
 
-**Phase:** Phase 1 — MVP  
-**Active Milestone:** M6 — Tic Tac Toe ❌⭕  
-**Last Updated:** 2026-10-07  
-**Overall Progress:** Milestones 0, 1, 2, 3, 4, 5 Complete (6 / 20 Milestones — 30%)  
+**Phase:** Phase 2 — Growth  
+**Active Milestone:** M14 Complete — Emoji Guessing  
+**Last Updated:** 2026-10-21  
+**Overall Progress:** Milestones 0–14 Complete (15 / 20 Milestones — 75%)  
 **Live LAN Hosting:**  
 - 📱 Frontend: `http://192.168.0.110:5173/` (Playable on any phone/device on Wi-Fi)  
 - ⚙️ Backend: `http://192.168.0.110:4000/` (Socket.IO + REST on 0.0.0.0)
@@ -19,8 +19,31 @@
 
 ## 🔄 What's In Progress
 
-**Task:** `M6-01` — Server TTT engine (board, turn alternation, move validation)  
-**Status:** In progress (Active Milestone: M6)
+**M11 Complete — UNO (US-025, US-026).**
+- Server `socket/games/uno.js`: 108-card deck, 7-card deal, color/number/wild matching, Skip / Reverse / Draw 2 / Wild / Wild +4, forced draw stacks with reshuffle-from-discard, 5-second UNO! call window with **Catch!** +2 penalty, win detection, standings by card points, Supabase scoring, forfeit on leave, rematch voting
+- Client `games/uno/Uno.jsx` + `uno.css`: private hand with playable highlighting, center pile with active color, face-down opponent stacks, draw pile with pending-draw warning, wild color picker, UNO!/Catch! buttons, winner podium with Play Again
+- Verified with a 15-assertion two-player Socket.IO smoke test (`test-uno.mjs`) plus a live browser match alongside a scripted bot (`uno-bot.mjs`)
+- Fixed two real defects found during verification: callback payloads were returning the raw game object (its Node timer handle is circular → socket.io parser stack overflow), and playable-card lists were advertised while a draw stack was pending
+
+**M12 Complete — Flappy Race (US-027).**
+- Server `socket/games/flappy.js`: authoritative 30 Hz flight loop (gravity, flap impulse, ceiling, ground), shared pipe course with spacing/gap tuning and a scroll-speed ramp, per-bird pipe scoring, crash detection with spectator mode, last-bird-standing winner resolution (pipes → survival time tie-breaks), 4-player cap, solo auto-start, rematch voting, leave/disconnect cleanup, and Supabase score persistence
+- Client `games/flappy/Flappy.jsx` + `flappy.css`: canvas renderer with parallax starfield, neon pipe course, own bird + labelled rival ghosts, interpolated 30 Hz snapshots, DOM race HUD with live pipe counts, countdown overlay, crash-spectating banner, keyboard/pointer flaps, ranked results screen
+- Wiring: capacity `1–4` in `rooms.js`, handlers registered in `socket/index.js`, hub card enabled, Room route + rules banner, leaderboard tabs for UNO & Flappy, profile game labels, card meta
+- Verified with a 21-assertion two-player Socket.IO race (`test-flappy.mjs`) — including out-of-race flap rejection, crash lockout, scoring, broadcast rate, standings order and leaderboard persistence — plus a live browser race against an autopilot peer that rendered frames, accepted keyboard flaps and reached the results screen
+
+**M13 Complete — Chess (US-028, US-029).**
+- Server `socket/games/chess.js`: `chess.js` owns the rules; the engine owns seats, turn order, check resolution and results. Every move is re-validated server-side, snapshots ship FEN + the legal-move map for the side to move, and checkmate/stalemate/threefold/insufficient-material/fifty-move are all detected
+- Client `games/chess/Chess.jsx` + `chess.css`: wood-board grid with Unicode pieces, colour-aware orientation, legal-move dots and capture rings, check pulse, captured trays, SAN move list, promotion picker, draw offer + accept/decline, resign confirmation, result panel with colour-swapping rematch
+- Wiring: capacity `2–2`, handlers in `socket/index.js`, hub card enabled, Room route + rules banner, leaderboard tab, profile label, card meta
+- Verified with a 44-assertion two-player Socket.IO suite (`test-chess.mjs`) — illegal and out-of-turn rejection, Scholar's mate, under-promotion, castling, draw offer/decline/accept, resign, colours alternating across rematches, leaderboard persistence — plus a browser match against `chess-bot.mjs` that ended in a real checkmate through the UI
+
+**M14 Complete — Emoji Guessing (US-030, US-031).**
+- Data `data/emojiAnswers.json`: 114 authored answers across movies, food, animals, nature, places, objects, phrases and everyday things, each with a ready-made emoji hint and category
+- Server `socket/games/emoji.js`: 5 rounds with rotating clue-giver, secret answers delivered only to the clue-giver's socket, 30 s compose phase with authored-hint fallback, 60 s guess phase, normalized matching (case/punctuation/articles/plurals), speed-scaled 60–100 points plus 40 for the clue-giver, reveal intermissions, leave handling, rematch voting, Supabase persistence
+- Client `games/emoji/Emoji.jsx` + `emoji.css`: emoji composer with 8 palette categories, live preview, undo/clear, timer bar, animated "writing a clue" state with answer blanks, guess input with a live public guess feed, reveal card, ranked final screen and a sticky score rail
+- Verified with a 55-assertion five-round Socket.IO suite (`test-emoji.mjs`) — answer privacy, clue authorization, self-guess rejection, scoring totals, rotation, persistence, rematch — plus browser play against `emoji-bot.mjs` covering the composer, clue broadcast, guess scoring and reveals
+
+**Next Up:** M15 — Phase 2 QA & Deploy Update (US-022–031 regression pass)
 
 ---
 
@@ -47,12 +70,33 @@
 | **Milestone M4** | **Word Scramble Game fully completed & verified** |
 | `M5-01` to `M5-13` | Full Trivia Battle: OpenTDB live API + 60-question fallback, 15s timers, 4 options A/B/C/D with keyboard shortcuts, speed bonus scoring, 10-step question stepper, remaining questions tracker, final question alert, per-question reveals, champion podium, score persistence |
 | **Milestone M5** | **Trivia Battle Game fully completed & verified** |
+| `M6-01` to `M6-12` | Complete Tic Tac Toe: Server engine (turn alternation, move validation, 8 win combo detection, draw detection, CyberBot AI heuristics), Client 3x3 grid, turn auras, ghost previews, gold win line highlight, game over screen, instant rematch with X/O swap, score saving to Supabase |
+| **Milestone M6** | **Tic Tac Toe Game fully completed & verified** |
+| `M7-01` to `M7-09` | Global Leaderboard: REST API (`/api/leaderboard` & `/:gameType`), ranking table (🥇🥈🥉 medals), filter tabs, shimmering skeleton loaders, empty state CTA, current player highlight ("YOU" badge), auto-refresh every 60s |
+| **Milestone M7** | **Leaderboard fully completed & verified** |
+| `M8-01` to `M8-13` | Phase 1 QA pass, deploy configs (Vercel SPA + Render), env variable runbook |
+| **Milestone M8** | **Phase 1 QA & Initial Deploy fully completed & verified** |
+| `M9-01` to `M9-08` | In-room chat: `chat:message` broadcast, history fetch, system join/leave messages, `ChatPanel` with auto-scroll and 200-char limits, two-column lobby |
+| **Milestone M9** | **In-Room Chat fully completed & verified** |
+| `M10-01` to `M10-08` | Player profiles: `/api/players/:nickname`, history endpoint, profile page, navbar/player-card links, score + games-played counters |
+| **Milestone M10** | **Player Profiles & Game History fully completed & verified** |
+| `M12-01` to `M12-10` | Flappy Race: authoritative 30 Hz flight loop, shared pipe course, ghost rivals, race HUD, crash spectating, ranked results, Supabase persistence, leaderboard + profile wiring |
+| **Milestone M12** | **Flappy Race fully completed & verified** |
+| `M13-01` to `M13-12` | Chess: server-validated `chess.js` engine, FEN snapshots with legal-move maps, check/mate/draw detection, draw offers, resign + forfeit, colour-swapping rematch, board UI with promotion picker, leaderboard/profile wiring |
+| **Milestone M13** | **Chess fully completed & verified** |
+| `M14-01` to `M14-11` | Emoji Guessing: 114-answer bank, rotating clue-giver, private answers, emoji composer, 30s/60s phase timers, normalized guess matching, speed scoring, five rounds, final standings, rematch, persistence |
+| **Milestone M14** | **Emoji Guessing fully completed & verified** |
 
 ---
 
 ## 🐛 Known Issues
 
-*None — Milestones 0, 1, 2, 3, & 4 completed with zero errors.*
+| Issue | Impact | Notes |
+|---|---|---|
+| Reloading the page mid-game drops socket.io room membership | A player who refreshes during an active game stops receiving state and their bird/seat is removed (all games, not just Flappy) | `room:join` rejects `in_game` rooms and `room:get` never rejoins the socket room; a reconnect grace window is needed. Tracked for M15 QA. |
+| Flappy broadcast measured at ~26/s instead of 30/s | Slightly less smooth motion on slow machines | `setInterval` drift on Windows; client already interpolates between snapshots |
+| Chess has no move clock | A player who walks away leaves the game open indefinitely | Groundwork exists (`startedAt`, `moveCount`); add a per-move timeout in M15 |
+| Emoji round rests on the honour system for clue quality | A clue-giver can send irrelevant emoji and stall the round | Guessers can still solve by luck; a "skip/re-roll" vote is the natural M15+ fix |
 
 ---
 
@@ -64,15 +108,16 @@
 | Q2 | Public URL (deploy now) or LAN-only first? | Resolved: LAN Hosting active at `http://192.168.0.110:5173` |
 | Q3 | Who owns the Supabase project and credentials? | M0 (schema created, pending live DB credentials) |
 | Q4 | Should trivia categories be selectable by the room host? | M5 (Default: Random / General Knowledge with host choice if time permits) |
-
+| Q5 | M10 Player Profiles — verify API endpoints work and profile page renders correctly | Resolved — all endpoints implemented and linked from Navbar/Leaderboard/Room |
 ---
 
 ## 👟 Exact Next Step
 
-**Milestone 6 — Tic Tac Toe:**
-1. **M6-01 to M6-04** → Server TTT engine (`server/src/socket/games/tictactoe.js`) with 3x3 board matrix, turn management, 8 win condition checks, draw detection, and socket events (`ttt:move`, `ttt:state`, `ttt:win`, `ttt:draw`, `ttt:rematch`).
-2. **M6-05 to M6-09** → Client `TicTacToe.jsx` UI (3x3 grid, turn indicator, interactive markers, win line highlight).
-3. **M6-10 to M6-12** → Game over screen with instant Rematch mechanism, swap X/O, and score saving.
+**Milestone 15 — Phase 2 QA & Deploy Update:**
+1. Full play-through of all eight games (Word Scramble, UNO, Flappy, Chess, Emoji + the four Phase 1 games) on the LAN build.
+2. Fix the reload-drop defect: give sockets a reconnect grace window so a refresh does not eject a player from an in-game room (`room:get` should re-join the socket room and re-seat the nickname).
+3. Add a move clock or inactivity timeout to Chess so a stalling player cannot hold a room open.
+4. Re-run `test-uno.mjs`, `test-flappy.mjs`, `test-chess.mjs`, `test-emoji.mjs`, then push the build to Vercel + Render and verify the live URL.
 
 ---
 
@@ -86,15 +131,15 @@
 | M3 | Snake Game | ✅ Completed | 2026-10-06 |
 | M4 | Word Scramble | ✅ Completed | 2026-10-06 |
 | M5 | Trivia Battle | ✅ Completed | 2026-10-07 |
-| M6 | Tic Tac Toe | 🔄 In Progress | — |
-| M7 | Leaderboard | 🔲 Not Started | — |
-| M8 | Phase 1 QA & Deploy | 🔲 Not Started | — |
-| M9 | In-Room Chat | 🔲 Not Started | — |
-| M10 | Player Profiles & History | 🔲 Not Started | — |
-| M11 | UNO | 🔲 Not Started | — |
-| M12 | Flappy Race | 🔲 Not Started | — |
-| M13 | Chess | 🔲 Not Started | — |
-| M14 | Emoji Guessing | 🔲 Not Started | — |
+| M6 | Tic Tac Toe | ✅ Completed | 2026-10-08 |
+| M7 | Leaderboard | ✅ Completed | 2026-10-09 |
+| M8 | Phase 1 QA & Deploy | ✅ Completed | 2026-10-09 |
+| M9 | In-Room Chat | ✅ Completed | 2026-10-12 |
+| M10 | Player Profiles & History | ✅ Completed | 2026-10-16 |
+| M11 | UNO | ✅ Completed | 2026-10-21 |
+| M12 | Flappy Race | ✅ Completed | 2026-10-21 |
+| M13 | Chess | ✅ Completed | 2026-10-21 |
+| M14 | Emoji Guessing | ✅ Completed | 2026-10-21 |
 | M15 | Phase 2 QA & Deploy | 🔲 Not Started | — |
 | M16 | Drawing & Guessing Game | 🔲 Not Started | — |
 | M17 | Ludo | 🔲 Not Started | — |

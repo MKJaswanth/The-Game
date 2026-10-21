@@ -4,414 +4,461 @@ import { usePlayer } from '../context/PlayerContext.jsx';
 import { GAMES_CATALOG } from '../data/games.js';
 import Avatar from '../components/Avatar.jsx';
 import Badge from '../components/Badge.jsx';
+import ChatPanel from '../components/ChatPanel.jsx';
 import Snake from '../games/snake/Snake.jsx';
 import WordScramble from '../games/wordscramble/WordScramble.jsx';
 import Trivia from '../games/trivia/Trivia.jsx';
+import TicTacToe from '../games/tictactoe/TicTacToe.jsx';
+import Uno from '../games/uno/Uno.jsx';
+import Flappy from '../games/flappy/Flappy.jsx';
+import Chess from '../games/chess/Chess.jsx';
+import Emoji from '../games/emoji/Emoji.jsx';
+
+const RULES = {
+  wordscramble: { title: '10 Word Rounds',     detail: '30 s per round, speed bonus applies' },
+  trivia:       { title: '10 Questions',        detail: '15 s per question, first correct earns bonus' },
+  tictactoe:    { title: '1v1 Match',           detail: 'First to 3-in-a-row wins' },
+  uno:          { title: '108-Card Deck',       detail: 'Match color or symbol · call UNO with 1 card' },
+  flappy:       { title: 'Neon Pipe Race',      detail: 'Last bird flying wins · Space / tap to flap' },
+  chess:        { title: 'Classic 1v1',          detail: 'Server-validated moves · checkmate, draw & rematch' },
+  emoji:        { title: '5 Emoji Rounds',       detail: '60 s per clue · clue-giver earns points too' },
+  snake:        { title: 'Survival Run',        detail: 'Eat, grow, avoid walls — score to leaderboard' },
+};
 
 export default function Room() {
-  const { code } = useParams();
-  const navigate = useNavigate();
+  const { code }      = useParams();
+  const navigate      = useNavigate();
   const { nickname, socket } = usePlayer();
 
-  const [roomState, setRoomState] = useState(null);
+  const [room, setRoom]     = useState(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError]   = useState('');
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
 
-  const roomCode = code?.toUpperCase()?.trim();
+  const roomCode    = code?.toUpperCase()?.trim();
   const currentNick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : null);
 
   useEffect(() => {
-    // If not authenticated, redirect to home
-    if (!currentNick) {
-      navigate('/', { replace: true });
-      return;
-    }
-
+    if (!currentNick) { navigate('/', { replace: true }); return; }
     if (!socket) return;
 
-    // Join / fetch room state on mount
     socket.emit('room:get', { roomCode }, (res) => {
-      if (res && res.success && res.room) {
-        setRoomState(res.room);
+      if (res?.success && res.room) { setRoom(res.room); setLoading(false); }
+      else socket.emit('room:join', { roomCode, nickname: currentNick }, (r) => {
         setLoading(false);
-      } else {
-        // Try joining the room if not already in it
-        socket.emit('room:join', { roomCode, nickname: currentNick }, (joinRes) => {
-          setLoading(false);
-          if (joinRes && joinRes.success) {
-            setRoomState(joinRes.room);
-          } else {
-            setError(joinRes?.error || 'Room not found. Check code and try again.');
-          }
-        });
-      }
+        if (r?.success) setRoom(r.room);
+        else setError(r?.error || 'Room not found');
+      });
     });
 
-    // Listen to real-time room updates
-    function handleRoomState(updated) {
-      if (updated && updated.code === roomCode) {
-        setRoomState(updated);
-        setLoading(false);
-      }
-    }
-
-    function handleGameStart(data) {
-      console.log('[Room] Game started:', data);
-    }
-
-    socket.on('room:state', handleRoomState);
-    socket.on('game:start', handleGameStart);
-
-    return () => {
-      socket.off('room:state', handleRoomState);
-      socket.off('game:start', handleGameStart);
-    };
+    const onRoomState = (u) => { if (u?.code === roomCode) { setRoom(u); setLoading(false); } };
+    socket.on('room:state', onRoomState);
+    socket.on('game:start', () => {});
+    return () => { socket.off('room:state', onRoomState); socket.off('game:start'); };
   }, [roomCode, currentNick, socket, navigate]);
 
-  const handleStartGame = () => {
-    if (!socket || !canStart) return;
-    socket.emit('room:start', { roomCode }, (res) => {
-      if (res && !res.success) {
-        setError(res.error);
-      }
-    });
-  };
-
-  const handleCopyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(roomCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleLeaveRoom = () => {
-    if (socket) {
-      socket.emit('room:leave', { roomCode, nickname: currentNick });
-    }
-    navigate('/hub');
-  };
-
-  // Auto-start solo games (single player room)
   useEffect(() => {
     if (
-      roomState &&
-      (roomState.gameType === 'wordscramble' || roomState.gameType === 'trivia') &&
-      roomState.status === 'waiting' &&
-      roomState.players.length === 1 &&
-      (roomState.capacity?.max === 1 || roomState.isSolo) &&
-      socket
-    ) {
-      socket.emit('room:start', { roomCode }, (res) => {
-        if (res && !res.success) {
-          setError(res.error);
-        }
-      });
-    }
-  }, [roomState, roomCode, socket]);
+      room && ['wordscramble','trivia','tictactoe','flappy'].includes(room.gameType) &&
+      room.status === 'waiting' && room.players.length === 1 &&
+      (room.capacity?.max === 1 || room.isSolo) && socket
+    ) socket.emit('room:start', { roomCode }, (r) => { if (r && !r.success) setError(r.error); });
+  }, [room, roomCode, socket]);
 
-  if (loading) {
-    return (
-      <div className="page page-room">
-        <div className="container" style={{ textAlign: 'center', padding: 'var(--space-12) 0' }}>
-          <div className="card" style={{ maxWidth: '400px', margin: '0 auto', padding: 'var(--space-8)' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 'var(--space-4)' }}>⏳</div>
-            <h3>Connecting to Room {roomCode}...</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', marginTop: 'var(--space-2)' }}>
-              Syncing state with server
-            </p>
-          </div>
+  const handleStart = () => { if (!socket || !canStart) return; socket.emit('room:start', { roomCode }, (r) => { if (r && !r.success) setError(r.error); }); };
+  const handleCopy  = async () => { try { await navigator.clipboard.writeText(roomCode); } catch {} setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const handleLeave = () => { socket?.emit('room:leave', { roomCode, nickname: currentNick }); navigate('/hub'); };
+
+  /* Loading */
+  if (loading) return (
+    <>
+      <div className="page"><div className="container rstate">
+        <div className="rstate-card card">
+          <span className="spinner" style={{ width: 28, height: 28, borderWidth: 3 }} />
+          <p className="rstate-title">Connecting to <span className="rcode">{roomCode}</span></p>
         </div>
-      </div>
-    );
-  }
+      </div></div>
+      {roomStyles}
+    </>
+  );
 
-  if (error || !roomState) {
-    return (
-      <div className="page page-room">
-        <div className="container" style={{ textAlign: 'center', padding: 'var(--space-12) 0' }}>
-          <div className="card" style={{ maxWidth: '440px', margin: '0 auto', padding: 'var(--space-8)' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)' }}>🚫</div>
-            <h2 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-2)' }}>Room Unavailable</h2>
-            <p className="field-error-text" style={{ marginBottom: 'var(--space-6)' }}>
-              {error || 'Room not found or no longer active.'}
-            </p>
-            <div className="button-group">
-              <Link to="/hub" className="btn btn-primary">Back to Game Hub</Link>
-            </div>
-          </div>
+  /* Error */
+  if (error || !room) return (
+    <>
+      <div className="page"><div className="container rstate">
+        <div className="rstate-card card">
+          <p className="rstate-title" style={{ color: 'var(--red)' }}>{error || 'Room not found'}</p>
+          <Link to="/hub" className="btn btn-primary" style={{ marginTop: 'var(--s4)' }}>Back to Hub</Link>
         </div>
-      </div>
-    );
-  }
+      </div></div>
+      {roomStyles}
+    </>
+  );
 
-  const gameInfo = GAMES_CATALOG.find((g) => g.id === roomState.gameType) || {
-    title: roomState.gameType,
-    icon: '🎮',
-    playerCount: 'Multiplayer'
-  };
+  const gameInfo = GAMES_CATALOG.find((g) => g.id === room.gameType) || { title: room.gameType };
+  const rules    = RULES[room.gameType] || { title: 'Match', detail: '' };
+  const isHost   = room.hostNickname === currentNick;
+  const canStart = isHost && room.players.length >= (room.capacity?.min || 1);
+  const isActive = room.status === 'in_game' || room.status === 'finished';
 
-  const GAME_RULES = {
-    wordscramble: {
-      title: 'Match Format: 10 Synchronized Word Rounds',
-      desc: 'Each round gives 30s to unscramble letters. Speed bonuses awarded. The match ends automatically after Round 10 with final podium rankings.',
-      badge: '10 Rounds Total',
-      icon: '🔤'
-    },
-    trivia: {
-      title: 'Match Format: 10 Synchronized Quiz Questions',
-      desc: 'Each question has a 15-second timer. Points awarded for correct answers + speed bonus. Match concludes after Question 10.',
-      badge: '10 Questions Total',
-      icon: '🧠'
-    },
-    tictactoe: {
-      title: 'Match Format: Head-to-Head 1v1 Duel',
-      desc: 'Turn-based battle on a 3x3 grid. Match concludes immediately upon 3-in-a-row or a full board draw, followed by instant rematch options.',
-      badge: '1 Match to Finish',
-      icon: '❌⭕'
-    },
-    snake: {
-      title: 'Match Format: Solo Survival Score Attack',
-      desc: 'Eat food to grow and accelerate. Match concludes when snake collides with wall or tail.',
-      badge: 'Survival Mode',
-      icon: '🐍'
-    }
-  };
-
-  const currentRules = GAME_RULES[roomState.gameType] || {
-    title: 'Match Format: Standard Room',
-    desc: 'Compete in real time. Final scores will be saved upon completion.',
-    badge: 'Standard Match',
-    icon: '🏁'
-  };
-
-  const isHost = roomState.hostNickname === currentNick;
-  const canStart = isHost && roomState.players.length >= (roomState.capacity?.min || 1);
+  /* Active game view */
+  const gameView = (() => {
+    if (room.gameType === 'snake') return <Snake onExit={handleLeave} />;
+    if (room.gameType === 'wordscramble' && isActive) return <WordScramble roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'trivia'       && isActive) return <Trivia       roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'tictactoe'    && isActive) return <TicTacToe    roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'uno'          && isActive) return <Uno          roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'flappy'       && isActive) return <Flappy       roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'chess'        && isActive) return <Chess        roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'emoji'        && isActive) return <Emoji        roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    return null;
+  })();
 
   return (
-    <div className="page page-room">
-      <div className="container" style={{ maxWidth: '900px' }}>
-        {/* Room Header Card */}
-        <div className="card" style={{
-          padding: 'var(--space-6) var(--space-8)',
-          marginBottom: 'var(--space-6)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 'var(--space-4)',
-          background: 'rgba(22, 25, 40, 0.9)'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
-              <span style={{ fontSize: '1.75rem' }}>{gameInfo.icon}</span>
-              <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>
-                {gameInfo.title}
-              </h1>
-              <Badge variant="accent">
-                {roomState.status === 'in_game' ? 'GAME IN PROGRESS' : 'ACTIVE SESSION'}
+    <>
+      <div className="page">
+        <div className="container" style={{ maxWidth: 1060 }}>
+
+          {/* Top bar */}
+          <div className="rbar">
+            <div className="rbar-left">
+              <div>
+                <div className="rbar-game">{gameInfo.title}</div>
+                <div className="rbar-player">Playing as {currentNick}</div>
+              </div>
+              <Badge variant={isActive ? 'success' : 'accent'}>
+                {isActive ? 'Live' : 'Lobby'}
               </Badge>
             </div>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
-              Player: <strong style={{ color: '#fff' }}>{currentNick}</strong> • Code: <strong>{roomCode}</strong>
-            </p>
-          </div>
-
-          {/* Room Code Badge & Copy */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <div style={{
-              background: 'var(--color-surface-hover)',
-              border: '1px solid var(--color-surface-border)',
-              padding: '8px 16px',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '10px', color: 'var(--color-text-dim)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                ROOM CODE
+            <div className="rbar-right">
+              <div className="rcode-block">
+                <span className="rcode-lbl">Room</span>
+                <span className="rcode">{roomCode}</span>
               </div>
-              <div style={{
-                fontSize: 'var(--font-size-xl)',
-                fontWeight: 800,
-                color: 'var(--color-accent-light)',
-                letterSpacing: '0.15em'
-              }}>
-                {roomCode}
-              </div>
+              <button type="button" className={`btn ${copied ? 'btn-primary' : 'btn-secondary'} rbar-copy`} onClick={handleCopy}>
+                {copied ? 'Copied' : 'Copy'}
+              </button>
             </div>
-
-            <button
-              type="button"
-              id="copy-room-code-btn"
-              onClick={handleCopyCode}
-              className={`btn ${copied ? 'btn-accent' : 'btn-secondary'}`}
-              style={{ padding: '12px 16px', minWidth: '100px' }}
-              title="Copy code to share with teammates"
-            >
-              {copied ? 'Copied! ✓' : '📋 Copy'}
-            </button>
           </div>
-        </div>
 
-        {/* If Snake game: render Snake Game Engine */}
-        {roomState.gameType === 'snake' ? (
-          <div style={{ marginBottom: 'var(--space-8)' }}>
-            <Snake onExit={handleLeaveRoom} />
-          </div>
-        ) : roomState.gameType === 'wordscramble' && (roomState.status === 'in_game' || roomState.status === 'finished') ? (
-          <div style={{ marginBottom: 'var(--space-8)' }}>
-            <WordScramble
-              roomCode={roomCode}
-              isHost={isHost}
-              onExit={handleLeaveRoom}
-            />
-          </div>
-        ) : roomState.gameType === 'trivia' && (roomState.status === 'in_game' || roomState.status === 'finished') ? (
-          <div style={{ marginBottom: 'var(--space-8)' }}>
-            <Trivia
-              roomCode={roomCode}
-              isHost={isHost}
-              onExit={handleLeaveRoom}
-            />
-          </div>
-        ) : (
-          /* Multiplayer Lobby View */
-          <>
-            <div className="card" style={{
-              padding: 'var(--space-6) var(--space-8)',
-              marginBottom: 'var(--space-6)'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 'var(--space-4)',
-                paddingBottom: 'var(--space-3)',
-                borderBottom: '1px solid var(--color-surface-border)'
-              }}>
-                <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>
-                  Players in Room ({roomState.players.length} / {roomState.capacity?.max || 8})
-                </h3>
-                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-dim)' }}>
-                  Min players to start: {roomState.capacity?.min || 1}
-                </span>
-              </div>
+          {gameView ? (
+            <div className="rgame-wrapper">
+              {gameView}
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: 'var(--space-3)'
-              }}>
-                {roomState.players.map((player) => (
-                  <div
-                    key={player.socketId || player.nickname}
-                    className="card"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--space-3)',
-                      padding: 'var(--space-3) var(--space-4)',
-                      background: 'var(--color-surface-hover)'
-                    }}
-                  >
-                    <Avatar nickname={player.nickname} size="md" />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontWeight: 700,
-                        fontSize: 'var(--font-size-sm)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {player.nickname}
-                      </div>
-                      <div style={{ display: 'flex', gap: 'var(--space-1)', marginTop: '2px' }}>
-                        {player.isHost && (
-                          <Badge variant="warning" style={{ fontSize: '9px', padding: '1px 5px' }}>
-                            👑 HOST
-                          </Badge>
-                        )}
-                        {player.nickname === currentNick && (
-                          <Badge variant="accent" style={{ fontSize: '9px', padding: '1px 5px' }}>
-                            YOU
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Match Format & End Rules Banner */}
-            <div className="card" style={{
-              padding: 'var(--space-4) var(--space-6)',
-              marginBottom: 'var(--space-6)',
-              background: 'rgba(22, 25, 40, 0.65)',
-              border: '1px solid var(--color-surface-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 'var(--space-4)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                <span style={{ fontSize: '1.6rem' }}>{currentRules.icon}</span>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 'var(--font-size-sm)', color: '#fff' }}>
-                    {currentRules.title}
-                  </div>
-                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                    {currentRules.desc}
-                  </div>
-                </div>
-              </div>
-              <Badge variant="accent" style={{ fontSize: '10px' }}>
-                {currentRules.badge}
-              </Badge>
-            </div>
-
-            {/* Action Controls */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 'var(--space-4)'
-            }}>
+              {/* In-game Floating Chat Toggle (US-022) */}
               <button
                 type="button"
-                className="btn btn-ghost"
-                onClick={handleLeaveRoom}
+                className="rchat-toggle-btn btn btn-secondary"
+                onClick={() => setShowChatDrawer(prev => !prev)}
+                aria-label="Toggle In-Game Room Chat"
+                id="in-game-chat-toggle"
               >
-                ← Leave Room
+                <span aria-hidden="true" className="rchat-toggle-ico">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 8-8.5h.5a8.48 8.48 0 0 1 8.5 8v.5z" />
+                  </svg>
+                </span>
+                <span>Chat</span>
               </button>
 
-              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-                {isHost ? (
-                  <button
-                    type="button"
-                    id="start-game-btn"
-                    className="btn btn-primary"
-                    disabled={!canStart}
-                    onClick={handleStartGame}
-                    style={{ padding: '12px 28px', fontSize: 'var(--font-size-base)', fontWeight: 700 }}
-                  >
-                    {canStart ? '🚀 Start Game' : `Waiting for players (${roomState.players.length}/${roomState.capacity?.min})`}
-                  </button>
-                ) : (
-                  <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', display: 'flex', alignItems: 'center' }}>
-                    Waiting for host (<strong>{roomState.hostNickname}</strong>) to start...
+              {/* In-game Chat Drawer Modal / Popover */}
+              {showChatDrawer && (
+                <div className="rchat-drawer">
+                  <div className="rchat-drawer-header">
+                    <span className="rchat-drawer-title">
+                      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 8-8.5h.5a8.48 8.48 0 0 1 8.5 8v.5z" />
+                      </svg>
+                      Room Chat
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost rchat-drawer-close"
+                      onClick={() => setShowChatDrawer(false)}
+                      aria-label="Close Chat Drawer"
+                    >
+                      ✕
+                    </button>
                   </div>
-                )}
+                  <div className="rchat-drawer-body">
+                    <ChatPanel
+                      socket={socket}
+                      roomCode={roomCode}
+                      currentNick={currentNick}
+                      isVisible={true}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rlobby">
+
+              {/* Two-column: left = players/rules/actions, right = chat */}
+              <div className="rlobby-cols">
+                <div className="rlobby-main">
+
+                  {/* Players */}
+                  <div className="rplayers card">
+                    <div className="rplayers-head">
+                      <span className="rplayers-title">
+                        Players
+                        <span className="rplayers-count">{room.players.length}/{room.capacity?.max || 8}</span>
+                      </span>
+                      <span className="rplayers-min">Min to start: {room.capacity?.min || 1}</span>
+                    </div>
+                    <div className="rplayers-grid">
+                      {room.players.map((p, i) => (
+                        <div key={p.socketId || p.nickname} className={`rplayer ${p.nickname === currentNick ? 'rplayer--you' : ''}`} style={{ animationDelay: `${i * 50}ms` }}>
+                          <div className="rplayer-av">
+                            <Avatar nickname={p.nickname} size="md" />
+                            {p.isHost && <span className="rhost-mark" title="Room Host">★</span>}
+                          </div>
+                          <Link to={`/profile/${encodeURIComponent(p.nickname)}`} className="rplayer-info" title="View profile">
+                            <div className="rplayer-name">{p.nickname}</div>
+                            <div className="rplayer-tags">
+                              {p.isHost     && <span className="rtag rtag--host">Host</span>}
+                              {p.nickname === currentNick && <span className="rtag rtag--you">You</span>}
+                            </div>
+                          </Link>
+                        </div>
+                      ))}
+                      {Array.from({ length: Math.max(0, (room.capacity?.max || 4) - room.players.length) }).map((_, i) => (
+                        <div key={`empty-${i}`} className="rplayer rplayer--empty">
+                          <div className="rplayer-empty-label">Waiting...</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rules */}
+                  <div className="rrules card">
+                    <div className="rrules-title">{rules.title}</div>
+                    <div className="rrules-detail">{rules.detail}</div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="ractions">
+                    <button type="button" className="btn btn-ghost" onClick={handleLeave}>Leave Room</button>
+                    {isHost ? (
+                      <button type="button" id="start-game-btn" className="btn btn-primary rstart" disabled={!canStart} onClick={handleStart}>
+                        {canStart ? 'Start Game' : `Need ${room.capacity?.min} players (${room.players.length} here)`}
+                      </button>
+                    ) : (
+                      <span className="rwaiting">
+                        <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                        Waiting for {room.hostNickname} to start
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Chat — M9-08: only visible in lobby/waiting, not during gameplay */}
+                <div className="rlobby-chat">
+                  <ChatPanel
+                    socket={socket}
+                    roomCode={roomCode}
+                    currentNick={currentNick}
+                    isVisible={true}
+                  />
+                </div>
               </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+      {roomStyles}
+    </>
   );
 }
+
+const roomStyles = (
+  <style>{`
+    .rstate {
+      display: flex; align-items: center; justify-content: center; min-height: 60vh;
+    }
+    .rstate-card {
+      text-align: center; padding: var(--s10) var(--s8);
+      max-width: 380px; width: 100%; margin: 0 auto;
+      display: flex; flex-direction: column; align-items: center; gap: var(--s3);
+    }
+    .rstate-title { font-size: var(--t-lg); font-weight: 700; }
+
+    .rcode {
+      font-family: 'Geist Mono', 'SF Mono', monospace;
+      font-weight: 800; letter-spacing: 0.14em;
+      color: var(--amber);
+    }
+
+    /* Top bar */
+    .rbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--s4) var(--s6);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      margin-bottom: var(--s5);
+      flex-wrap: wrap;
+      gap: var(--s4);
+    }
+    .rbar-left { display: flex; align-items: center; gap: var(--s3); }
+    .rbar-game { font-size: var(--t-xl); font-weight: 800; color: #fff; letter-spacing: -0.01em; }
+    .rbar-player { font-size: var(--t-xs); color: var(--text-2); margin-top: 1px; }
+    .rbar-right { display: flex; align-items: center; gap: var(--s3); }
+    .rcode-block {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: var(--s2) var(--s4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+    .rcode-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); }
+    .rbar-copy { padding: 8px 16px; font-size: var(--t-xs); font-weight: 700; }
+
+    /* Lobby */
+    .rlobby { display: flex; flex-direction: column; gap: var(--s4); }
+
+    /* Two-column lobby layout */
+    .rlobby-cols {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: var(--s5);
+      align-items: start;
+    }
+    .rlobby-main { display: flex; flex-direction: column; gap: var(--s4); }
+    .rlobby-chat { height: 480px; }
+
+    /* Players section */
+    .rplayers { padding: var(--s5) var(--s6); }
+    .rplayers-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: var(--s4); margin-bottom: var(--s4);
+      border-bottom: 1px solid var(--border);
+    }
+    .rplayers-title {
+      font-size: var(--t-base); font-weight: 800; color: #fff;
+      display: flex; align-items: center; gap: var(--s2);
+    }
+    .rplayers-count {
+      font-size: var(--t-xs); font-weight: 700; color: var(--text-2);
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--r-pill); padding: 1px 8px;
+    }
+    .rplayers-min { font-size: var(--t-xs); color: var(--text-3); font-weight: 600; }
+    .rplayers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: var(--s3);
+    }
+    .rplayer {
+      display: flex; align-items: center; gap: var(--s3);
+      padding: var(--s3) var(--s4);
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      animation: fadeUp 280ms var(--ease-spring) both;
+      transition: all 180ms ease;
+    }
+    .rplayer:hover {
+      border-color: var(--border-3);
+    }
+    .rplayer--you {
+      border-color: var(--amber);
+      background: var(--amber-dim);
+    }
+    .rplayer--empty {
+      justify-content: center; border-style: dashed;
+      opacity: 0.35; padding: var(--s4);
+    }
+    .rplayer-empty-label { font-size: var(--t-xs); color: var(--text-3); font-weight: 600; }
+    .rplayer-av { position: relative; flex-shrink: 0; }
+    .rhost-mark {
+      position: absolute; top: -6px; right: -6px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--accent);
+      color: #16130c;
+      font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .rplayer-info { flex: 1; min-width: 0; color: inherit; text-decoration: none; cursor: pointer; }
+    .rplayer-info:hover .rplayer-name { color: var(--accent-hi); }
+    .rplayer-name { font-weight: 700; font-size: var(--t-sm); color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rplayer-tags { display: flex; gap: 4px; margin-top: 3px; }
+    .rtag {
+      font-size: 9px; font-weight: 800; padding: 2px 6px;
+      border-radius: var(--r-pill); text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .rtag--host { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+    .rtag--you  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
+
+    /* Rules */
+    .rrules {
+      padding: var(--s4) var(--s5);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--s4); flex-wrap: wrap;
+    }
+    .rrules-title { font-size: var(--t-sm); font-weight: 800; color: #fff; }
+    .rrules-detail { font-size: var(--t-xs); color: var(--text-2); margin-top: 2px; }
+
+    /* Actions */
+    .ractions {
+      display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap; gap: var(--s4);
+    }
+    .rstart { padding: 12px 32px; font-size: var(--t-base); font-weight: 800; letter-spacing: 0.02em; }
+    .rwaiting {
+      display: flex; align-items: center; gap: var(--s2);
+      font-size: var(--t-sm); color: var(--text-2); font-weight: 600;
+    }
+
+    /* In-game Chat Toggle & Drawer (US-022) */
+    .rgame-wrapper { position: relative; }
+    .rchat-toggle-btn {
+      position: fixed; bottom: 24px; right: 24px; z-index: 99;
+      display: flex; align-items: center; gap: var(--s2);
+      padding: 10px 20px; font-size: var(--t-sm); font-weight: 700;
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+      border-radius: var(--r-pill); cursor: pointer;
+      transition: border-color 200ms ease;
+    }
+    .rchat-toggle-btn:hover {
+      border-color: var(--border-3);
+    }
+    .rchat-drawer {
+      position: fixed; bottom: 84px; right: 24px;
+      width: 360px; height: 500px;
+      max-width: calc(100vw - 32px); max-height: calc(100vh - 120px);
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-md);
+      z-index: 100; display: flex; flex-direction: column; overflow: hidden;
+      animation: slideUp 240ms var(--ease-spring);
+    }
+    .rchat-drawer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--s3) var(--s4); border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .rchat-drawer-title { font-weight: 800; font-size: var(--t-sm); color: #fff; }
+    .rchat-drawer-close { padding: 4px 8px; font-size: var(--t-sm); min-height: unset; line-height: 1; cursor: pointer; }
+    .rchat-drawer-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+    @media (max-width: 600px) {
+      .rbar { padding: var(--s3) var(--s4); }
+      .rplayers-grid { grid-template-columns: 1fr 1fr; }
+      .rlobby-cols { grid-template-columns: 1fr; }
+      .rlobby-chat { height: 320px; }
+      .ractions { flex-direction: column-reverse; align-items: stretch; }
+      .rstart { width: 100%; justify-content: center; }
+      .rchat-drawer { bottom: 74px; right: 12px; width: calc(100vw - 24px); height: 420px; }
+    }
+  `}</style>
+);

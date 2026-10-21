@@ -1,9 +1,10 @@
-/* Word Scramble Styling */
+/* Word Scramble — Graphite Arcade
+   Flat opaque surfaces, hairline borders, mono numerals. */
 
 .scramble-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--s6);
   width: 100%;
   max-width: 860px;
   margin: 0 auto;
@@ -14,28 +15,28 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-4);
-  background: rgba(22, 25, 40, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-6);
+  gap: var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s6);
 }
 
 .scramble-round-info {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--s3);
 }
 
 .scramble-round-pill {
   font-weight: 800;
-  font-size: var(--font-size-lg);
-  color: #fff;
-  letter-spacing: 0.05em;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-lg);
+  color: var(--text);
 }
 
-/* Round Progress Stepper */
+/* Round progress stepper */
 .scramble-stepper-wrap {
   display: flex;
   align-items: center;
@@ -43,9 +44,9 @@
   gap: 6px;
   flex-wrap: wrap;
   padding: 8px 16px;
-  background: rgba(13, 15, 26, 0.6);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-full);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
 }
 
 .scramble-step-dot {
@@ -55,123 +56,114 @@
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 800;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text-dim);
-  border: 1px solid var(--color-surface-border);
-  transition: all 0.3s ease;
+  font-weight: 700;
+  font-family: var(--mono);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  transition: background var(--ease), color var(--ease), border-color var(--ease);
 }
 
 .scramble-step-dot.completed {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.4);
+  background: var(--green-dim);
+  color: var(--green);
+  border-color: rgba(105, 169, 126, 0.4);
 }
 
 .scramble-step-dot.active {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 10px rgba(124, 58, 237, 0.6);
-  transform: scale(1.15);
+  background: var(--accent);
+  color: #16130c;
+  border-color: var(--accent-hi);
+  font-weight: 800;
 }
 
 .scramble-step-dot.final {
-  border-color: rgba(239, 68, 68, 0.4);
+  border-color: rgba(208, 104, 97, 0.4);
 }
 
 .scramble-step-dot.final.active {
-  background: #ef4444;
-  color: #fff;
-  border-color: #fca5a5;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+  background: var(--red);
+  color: #16100e;
+  border-color: var(--red);
   animation: pulse-timer 1s infinite alternate;
 }
 
 .scramble-timer-container {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--s3);
 }
 
 .scramble-timer-badge {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--s2);
   padding: 6px 14px;
-  border-radius: var(--radius-full);
+  border-radius: var(--r-pill);
   font-weight: 800;
-  font-size: var(--font-size-base);
-  font-family: monospace;
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--color-accent-light);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  transition: all 0.3s ease;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-base);
+  background: var(--bg-2);
+  color: var(--accent-hi);
+  border: 1px solid var(--border-2);
+  transition: background var(--ease), color var(--ease), border-color var(--ease);
 }
 
 .scramble-timer-badge.urgent {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.5);
+  background: var(--red-dim);
+  color: var(--red);
+  border-color: rgba(208, 104, 97, 0.5);
   animation: pulse-timer 1s infinite alternate;
 }
 
 @keyframes pulse-timer {
-  from {
-    transform: scale(1);
-    box-shadow: 0 0 0 rgba(239, 68, 68, 0);
-  }
-  to {
-    transform: scale(1.05);
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
-  }
+  from { opacity: 1; }
+  to   { opacity: 0.55; }
 }
 
 .scramble-timer-bar-wrap {
   width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-full);
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
   overflow: hidden;
-  margin-top: calc(-1 * var(--space-4));
+  margin-top: calc(-1 * var(--s4));
 }
 
 .scramble-timer-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-primary-light) 100%);
-  border-radius: var(--radius-full);
-  transition: width 0.2s linear, background-color 0.3s ease;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transition: width 0.2s linear, background-color 200ms ease;
 }
 
 .scramble-timer-bar.urgent {
-  background: linear-gradient(90deg, #f59e0b 0%, #ef4444 100%);
+  background: var(--red);
 }
 
-/* Play Area */
+/* Play area */
 .scramble-play-card {
-  background: rgba(22, 25, 40, 0.95);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s8);
   text-align: center;
-  box-shadow: var(--shadow-card);
-  position: relative;
-  overflow: hidden;
 }
 
 .scramble-category-badge {
   display: inline-block;
   padding: 4px 12px;
-  background: rgba(124, 58, 237, 0.15);
-  color: var(--color-primary-light);
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
+  background: var(--accent-dim);
+  color: var(--accent-hi);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--s4);
 }
 
 .scramble-tiles-row {
@@ -179,38 +171,31 @@
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  margin: var(--space-6) 0 var(--space-8);
+  gap: var(--s2);
+  margin: var(--s6) 0 var(--s8);
 }
 
 .scramble-letter-tile {
-  width: 58px;
-  height: 64px;
+  width: 54px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  font-weight: 900;
-  color: #fff;
-  background: linear-gradient(135deg, rgba(30, 35, 58, 0.9) 0%, rgba(20, 24, 42, 0.95) 100%);
-  border: 2px solid var(--color-surface-border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  font-family: var(--mono);
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
   user-select: none;
-  animation: tile-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-}
-
-.scramble-letter-tile:hover {
-  transform: translateY(-4px) scale(1.05);
-  border-color: var(--color-accent);
-  box-shadow: 0 12px 20px rgba(6, 182, 212, 0.25);
+  animation: tile-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 @keyframes tile-pop {
   0% {
     opacity: 0;
-    transform: scale(0.6) translateY(20px);
+    transform: scale(0.85) translateY(8px);
   }
   100% {
     opacity: 1;
@@ -218,217 +203,207 @@
   }
 }
 
-/* Guess Form */
+/* Guess form */
 .scramble-form {
   max-width: 480px;
   margin: 0 auto;
   display: flex;
-  gap: var(--space-3);
+  gap: var(--s3);
 }
 
 .scramble-input {
   flex: 1;
-  background: rgba(13, 15, 26, 0.8);
-  border: 2px solid var(--color-surface-border);
-  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
   padding: 14px 18px;
-  font-size: var(--font-size-xl);
+  font-size: var(--t-lg);
   font-weight: 700;
-  color: #fff;
+  font-family: var(--mono);
+  color: var(--text);
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.15em;
   outline: none;
-  transition: all 0.2s ease;
+  transition: border-color var(--ease), box-shadow var(--ease);
 }
 
 .scramble-input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.25);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .scramble-input.shake {
   animation: shake 0.4s ease-in-out;
-  border-color: #ef4444;
+  border-color: var(--red);
 }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-8px); }
-  40%, 80% { transform: translateX(8px); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
 }
 
 .scramble-feedback {
   min-height: 28px;
-  margin-top: var(--space-4);
-  font-size: var(--font-size-sm);
+  margin-top: var(--s4);
+  font-size: var(--t-sm);
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: var(--s2);
 }
 
 .scramble-feedback.success {
-  color: #10b981;
+  color: var(--green);
 }
 
 .scramble-feedback.error {
-  color: #ef4444;
+  color: var(--red);
 }
 
 .scramble-feedback.waiting {
-  color: var(--color-text-muted);
+  color: var(--text-2);
 }
 
-/* Intermission / Round Result Overlay */
+/* Intermission / round result overlay */
 .scramble-intermission-card {
-  background: rgba(22, 25, 40, 0.95);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s8);
   text-align: center;
-  animation: fade-in 0.3s ease;
 }
 
 .scramble-reveal-word {
-  font-size: 2.8rem;
-  font-weight: 900;
+  font-size: var(--t-4xl);
+  font-weight: 800;
+  font-family: var(--mono);
   letter-spacing: 0.15em;
-  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: var(--space-4) 0;
-  text-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+  color: var(--accent-hi);
+  margin: var(--s4) 0;
 }
 
 .scramble-solvers-list {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  margin: var(--space-6) 0;
+  gap: var(--s3);
+  margin: var(--s6) 0;
 }
 
 .scramble-solver-chip {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--s2);
   padding: 6px 14px;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: var(--radius-full);
-  color: #34d399;
+  background: var(--green-dim);
+  border: 1px solid rgba(105, 169, 126, 0.35);
+  border-radius: var(--r-pill);
+  color: var(--green);
   font-weight: 700;
-  font-size: var(--font-size-sm);
+  font-size: var(--t-sm);
 }
 
-/* Scoreboard Panel */
+/* Scoreboard panel */
 .scramble-scoreboard-card {
-  background: rgba(22, 25, 40, 0.85);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5) var(--s6);
 }
 
 .scramble-scoreboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--color-surface-border);
+  margin-bottom: var(--s4);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border);
 }
 
 .scramble-scores-grid {
   display: grid;
-  grid-templateColumns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--s3);
 }
 
 .scramble-player-score-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  background: rgba(13, 15, 26, 0.6);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
+  padding: var(--s3) var(--s4);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
 }
 
 .scramble-player-score-item.is-me {
-  border-color: var(--color-accent);
-  background: rgba(6, 182, 212, 0.08);
+  border-color: var(--border-3);
+  background: var(--accent-dim);
 }
 
 .scramble-player-score-item.solved {
-  border-color: rgba(16, 185, 129, 0.6);
-  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(105, 169, 126, 0.5);
+  background: var(--green-dim);
 }
 
-/* Final Game Over Screen */
+/* Final game over screen */
 .scramble-gameover-card {
-  background: rgba(22, 25, 40, 0.95);
-  border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-10) var(--space-8);
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-lg);
+  padding: var(--s10) var(--s8);
   text-align: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-  animation: slide-up 0.5s ease;
 }
 
 .scramble-trophy {
-  font-size: 4rem;
-  margin-bottom: var(--space-2);
+  font-size: 3.2rem;
+  margin-bottom: var(--s2);
+  color: var(--accent);
   animation: bounce-trophy 2s infinite ease-in-out;
 }
 
 @keyframes bounce-trophy {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50%      { transform: translateY(-8px); }
 }
 
 .scramble-rankings-table {
   width: 100%;
   max-width: 520px;
-  margin: var(--space-6) auto;
+  margin: var(--s6) auto;
   border-collapse: collapse;
 }
 
 .scramble-rankings-table th,
 .scramble-rankings-table td {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--s3) var(--s4);
   text-align: left;
 }
 
+.scramble-rankings-table th {
+  color: var(--text-3);
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--mono);
+  border-bottom: 1px solid var(--border);
+}
+
 .scramble-rankings-table tr {
-  border-bottom: 1px solid var(--color-surface-border);
+  border-bottom: 1px solid var(--border);
 }
 
 .scramble-rankings-table tr:first-child td {
   font-weight: 800;
-  color: #fbbf24;
+  color: var(--accent-hi);
 }
 
 .scramble-score-num {
-  font-family: monospace;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
   font-weight: 800;
-  color: var(--color-accent-light);
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  color: var(--accent-hi);
 }

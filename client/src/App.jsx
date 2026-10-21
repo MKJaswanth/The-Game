@@ -6,6 +6,7 @@ import Home from './pages/Home.jsx';
 import GameHub from './pages/GameHub.jsx';
 import Room from './pages/Room.jsx';
 import Leaderboard from './pages/Leaderboard.jsx';
+import Profile from './pages/Profile.jsx';
 import NotFound from './pages/NotFound.jsx';
 import './App.css';
 
@@ -21,6 +22,7 @@ export default function App() {
               <Route path="/hub" element={<GameHub />} />
               <Route path="/room/:code" element={<Room />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/profile/:nickname" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

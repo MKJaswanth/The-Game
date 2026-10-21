@@ -1,0 +1,23 @@
+services:
+  # Single-service deploy: Express serves the API, the Socket.IO server AND the
+  # built SPA from client/dist, so the whole game runs on one HTTPS origin with
+  # working websockets — no separate frontend host or CORS setup required.
+  - type: web
+    name: the-game
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install --prefix server && npm install --prefix client && npm run build --prefix client
+    startCommand: node server/src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

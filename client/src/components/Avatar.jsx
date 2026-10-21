@@ -11,23 +11,23 @@ function getInitials(name = '') {
   return clean.slice(0, 2).toUpperCase();
 }
 
-// Generate consistent gradient for nicknames
-function getGradient(name = '') {
-  const gradients = [
-    'linear-gradient(135deg, #7c3aed, #06b6d4)',
-    'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    'linear-gradient(135deg, #3b82f6, #10b981)',
-    'linear-gradient(135deg, #f59e0b, #ef4444)',
-    'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-    'linear-gradient(135deg, #10b981, #06b6d4)'
-  ];
-  if (!name) return gradients[0];
+// Deterministic flat tone per nickname — muted, same saturation family.
+const TONES = [
+  { bg: '#2d3846', fg: '#c4d2e0' }, // steel
+  { bg: '#3b3421', fg: '#dcc98a' }, // brass
+  { bg: '#2c3d35', fg: '#a5cdb6' }, // moss
+  { bg: '#43302d', fg: '#d9a8a1' }, // clay
+  { bg: '#31353d', fg: '#c0c6d1' }, // slate
+  { bg: '#39322f', fg: '#d1b49c' }, // umber
+];
+
+function getTone(name = '') {
+  if (!name) return TONES[0];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % gradients.length;
-  return gradients[index];
+  return TONES[Math.abs(hash) % TONES.length];
 }
 
 export default function Avatar({
@@ -38,12 +38,12 @@ export default function Avatar({
 }) {
   const initials = getInitials(nickname);
   const sizeClass = `avatar-${size}`;
-  const background = getGradient(nickname);
+  const tone = getTone(nickname);
 
   return (
     <div
       className={`avatar ${sizeClass} ${className}`.trim()}
-      style={{ background }}
+      style={{ background: tone.bg, color: tone.fg }}
       title={nickname || 'Player'}
       aria-label={`Avatar for ${nickname || 'Player'}`}
       {...rest}

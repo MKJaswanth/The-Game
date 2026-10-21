@@ -7,7 +7,20 @@ const router = Router();
 export const inMemoryScores = [];
 
 // Helper function to record score both in-memory and in Supabase
-export async function recordScore(nickname, gameType, score, won = false) {
+export async function recordScore(arg1, arg2, arg3, arg4 = false) {
+  let nickname, gameType, score, won;
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    nickname = arg1.nickname;
+    gameType = arg1.gameType || arg1.game_type;
+    score = arg1.score;
+    won = arg1.won ?? false;
+  } else {
+    nickname = arg1;
+    gameType = arg2;
+    score = arg3;
+    won = arg4;
+  }
+
   const numScore = parseInt(score, 10);
   if (isNaN(numScore) || numScore < 0) {
     throw new Error('Valid positive integer score is required');
@@ -15,8 +28,8 @@ export async function recordScore(nickname, gameType, score, won = false) {
 
   const newScore = {
     id: `score_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    nickname: nickname.trim(),
-    gameType: gameType.trim(),
+    nickname: (nickname || 'Player').trim(),
+    gameType: (gameType || 'unknown').trim(),
     score: numScore,
     won: Boolean(won),
     playedAt: new Date().toISOString()
