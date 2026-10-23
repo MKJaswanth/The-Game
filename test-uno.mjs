@@ -4,7 +4,7 @@
  */
 import { io } from './client/node_modules/socket.io-client/build/esm/index.js';
 
-const URL = 'http://localhost:4000';
+const URL = process.env.SERVER_URL || 'http://localhost:4000';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function client(nick) {

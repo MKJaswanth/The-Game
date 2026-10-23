@@ -3,8 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { usePlayer } from '../context/PlayerContext.jsx';
 import Avatar from '../components/Avatar.jsx';
 import Badge from '../components/Badge.jsx';
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:4000';
+import { SERVER_URL } from '../socket/socket.js';
 
 const GAME_LABELS = {
   snake: 'Snake',

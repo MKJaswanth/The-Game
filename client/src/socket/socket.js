@@ -9,9 +9,14 @@ const isViteDevServer = typeof window !== 'undefined' && VITE_PORTS.has(window.l
 const devServerUrl = typeof window !== 'undefined' && window.location.hostname
   ? `http://${window.location.hostname}:4000`
   : 'http://localhost:4000';
-const sameOrigin = typeof window !== 'undefined' && window.location.port && !isViteDevServer
-  ? window.location.origin
-  : null;
+// Served by Express itself (single-service deploys, tunnels, production): the
+// page origin already carries the API and the websocket. Note that HTTPS pages
+// on the default port report an empty location.port, so a port check is wrong
+// here — only the Vite dev/preview ports are a different origin.
+const isHttpPage =
+  typeof window !== 'undefined' &&
+  (window.location.protocol === 'http:' || window.location.protocol === 'https:');
+const sameOrigin = isHttpPage && !isViteDevServer ? window.location.origin : null;
 
 export const SERVER_URL = import.meta.env.VITE_SERVER_URL || sameOrigin || devServerUrl;
 

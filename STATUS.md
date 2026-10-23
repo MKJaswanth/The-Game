@@ -97,6 +97,7 @@
 | Flappy broadcast measured at ~26/s instead of 30/s | Slightly less smooth motion on slow machines | `setInterval` drift on Windows; client already interpolates between snapshots |
 | Chess has no move clock | A player who walks away leaves the game open indefinitely | Groundwork exists (`startedAt`, `moveCount`); add a per-move timeout in M15 |
 | Emoji round rests on the honour system for clue quality | A clue-giver can send irrelevant emoji and stall the round | Guessers can still solve by luck; a "skip/re-roll" vote is the natural M15+ fix |
+| Flappy is latency-bound on a distant deploy | The flap cycle (420 px/s impulse against 1450 px/s² gravity) has a ~0.29 s control horizon, so the game is hard when the round trip is ~0.25 s | Render's free instance sits far from the players (measured 244 ms RTT from India); the fix is a nearby region plus client-side prediction of the bird |
 
 ---
 
