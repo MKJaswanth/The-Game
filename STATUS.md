@@ -93,7 +93,7 @@
 
 | Issue | Impact | Notes |
 |---|---|---|
-| Reloading the page mid-game drops socket.io room membership | A player who refreshes during an active game stops receiving state and their bird/seat is removed (all games, not just Flappy) | `room:join` rejects `in_game` rooms and `room:get` never rejoins the socket room; a reconnect grace window is needed. Tracked for M15 QA. |
+| ~~Reloading the page mid-game drops socket.io room membership~~ | **Fixed (M15):** a refresh, a dropped Wi-Fi link or a sleeping laptop now keeps the seat. The server parks a live seat for 45 s and the tab reclaims it with the resume token it stored in `sessionStorage`; nickname-only takeover is allowed for a seat the server already sees as disconnected, so a stranger can never evict a connected player. The room also shows a “loss connection — holding the seat” banner while somebody is away. | Covered by `test-reconnect.mjs` (19 checks: token issue, no token leakage in broadcasts, resume, hijack rejection, grace expiry) and by a browser refresh during a live chess game. |
 | Flappy broadcast measured at ~26/s instead of 30/s | Slightly less smooth motion on slow machines | `setInterval` drift on Windows; client already interpolates between snapshots |
 | Chess has no move clock | A player who walks away leaves the game open indefinitely | Groundwork exists (`startedAt`, `moveCount`); add a per-move timeout in M15 |
 | Emoji round rests on the honour system for clue quality | A clue-giver can send irrelevant emoji and stall the round | Guessers can still solve by luck; a "skip/re-roll" vote is the natural M15+ fix |

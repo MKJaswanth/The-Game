@@ -35,6 +35,9 @@ export default function Room() {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState('');
   const [showChatDrawer, setShowChatDrawer] = useState(false);
+  // Bumped on every socket reconnect so a live game re-fetches its state instead
+  // of sitting on a board that stopped updating while the link was down.
+  const [resumeNonce, setResumeNonce] = useState(0);
 
   const roomCode    = code?.toUpperCase()?.trim();
   const currentNick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : null);
@@ -43,19 +46,49 @@ export default function Room() {
     if (!currentNick) { navigate('/', { replace: true }); return; }
     if (!socket) return;
 
-    socket.emit('room:get', { roomCode }, (res) => {
-      if (res?.success && res.room) { setRoom(res.room); setLoading(false); }
-      else socket.emit('room:join', { roomCode, nickname: currentNick }, (r) => {
-        setLoading(false);
-        if (r?.success) setRoom(r.room);
-        else setError(r?.error || 'Room not found');
-      });
+    // The token is this player's claim on their seat: it survives a refresh (per-tab
+    // sessionStorage) and is the only thing that can take a live seat back.
+    const tokenKey = `room_token_${roomCode}`;
+    const readToken = () => (typeof window !== 'undefined' ? sessionStorage.getItem(tokenKey) : null);
+    const saveToken = (t) => { if (t && typeof window !== 'undefined') sessionStorage.setItem(tokenKey, t); };
+
+    let active = true;
+
+    const joinRoom = () => socket.emit('room:join', { roomCode, nickname: currentNick, token: readToken() }, (r) => {
+      if (!active) return;
+      setLoading(false);
+      if (r?.success) { saveToken(r.token); setRoom(r.room); }
+      else setError(r?.error || 'Room not found');
     });
 
-    const onRoomState = (u) => { if (u?.code === roomCode) { setRoom(u); setLoading(false); } };
+    const syncRoom = () => socket.emit('room:get', { roomCode, nickname: currentNick, token: readToken() }, (res) => {
+      if (!active) return;
+      if (!res?.success || !res.room) { joinRoom(); return; }
+      setLoading(false);
+      if (res.token) saveToken(res.token);
+      setRoom(res.room);
+
+      const isMember = res.room.players?.some((p) => p.nickname === currentNick);
+      if (!isMember && res.room.status === 'waiting') joinRoom();
+      if (!isMember && res.room.status === 'in_game') setError('This game is already in progress.');
+    });
+
+    syncRoom();
+
+    const onRoomState = (u) => { if (active && u?.code === roomCode) { setRoom(u); setLoading(false); } };
+    const onReconnect = () => {
+      if (!active) return;
+      setResumeNonce((n) => n + 1);
+      syncRoom();
+    };
+
     socket.on('room:state', onRoomState);
-    socket.on('game:start', () => {});
-    return () => { socket.off('room:state', onRoomState); socket.off('game:start'); };
+    socket.on('connect', onReconnect);
+    return () => {
+      active = false;
+      socket.off('room:state', onRoomState);
+      socket.off('connect', onReconnect);
+    };
   }, [roomCode, currentNick, socket, navigate]);
 
   useEffect(() => {
@@ -101,6 +134,7 @@ export default function Room() {
   const isHost   = room.hostNickname === currentNick;
   const canStart = isHost && room.players.length >= (room.capacity?.min || 1);
   const isActive = room.status === 'in_game' || room.status === 'finished';
+  const awayPlayers = room.players.filter((p) => p.connected === false);
 
   /* Active game view */
   const gameView = (() => {
@@ -142,8 +176,18 @@ export default function Room() {
             </div>
           </div>
 
+          {awayPlayers.length > 0 && (
+            <div className="rreconnect-note" role="status" aria-live="polite">
+              <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+              <span>
+                <strong>{awayPlayers.map((p) => p.nickname).join(', ')}</strong>
+                {awayPlayers.length === 1 ? ' lost connection' : ' lost connection'} — holding the seat so they can rejoin…
+              </span>
+            </div>
+          )}
+
           {gameView ? (
-            <div className="rgame-wrapper">
+            <div className="rgame-wrapper" key={`${room.gameType}-${resumeNonce}`}>
               {gameView}
 
               {/* In-game Floating Chat Toggle (US-022) */}
@@ -220,6 +264,7 @@ export default function Room() {
                             <div className="rplayer-tags">
                               {p.isHost     && <span className="rtag rtag--host">Host</span>}
                               {p.nickname === currentNick && <span className="rtag rtag--you">You</span>}
+                              {p.connected === false && <span className="rtag rtag--away">Away</span>}
                             </div>
                           </Link>
                         </div>
@@ -396,6 +441,20 @@ const roomStyles = (
     }
     .rtag--host { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
     .rtag--you  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
+    .rtag--away { background: rgba(148,163,184,0.14); color: var(--text-2, #94a3b8); border: 1px solid rgba(148,163,184,0.3); }
+
+    /* Holding a disconnected player's seat */
+    .rreconnect-note {
+      display: flex; align-items: center; gap: var(--s3);
+      padding: var(--s3) var(--s4);
+      margin-bottom: var(--s4);
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.28);
+      border-radius: var(--r-md);
+      color: var(--text-2);
+      font-size: var(--t-xs); font-weight: 600;
+    }
+    .rreconnect-note strong { color: var(--amber); font-weight: 800; }
 
     /* Rules */
     .rrules {
