@@ -6,6 +6,9 @@ const activeUnoGames = new Map();
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
 const UNO_CALL_WINDOW_MS = 5000; // M11-11: 5s window to call UNO
+// Every turn has a visible clock. When it runs out the seat draws a card and the
+// turn passes, so one player walking away can no longer freeze the table.
+const TURN_MS = Number(process.env.UNO_TURN_MS) > 0 ? Number(process.env.UNO_TURN_MS) : 25000;
 
 // Card point values (classic UNO scoring)
 export function cardPoints(card) {
@@ -109,6 +112,10 @@ export function startUnoGame(io, roomCode) {
     unoPending: null, // nickname who must call UNO
     unoDeadline: null,
     unoTimer: null,
+    turnDeadline: null,
+    turnTimer: null,
+    drawnCardId: null, // card drawn this turn that may still be played
+    lastAction: null, // human-readable feed line shown to the table
     isForfeit: false,
     forfeitedBy: null,
     rematchVotes: new Set(),
@@ -120,6 +127,7 @@ export function startUnoGame(io, roomCode) {
     `[UNO] Match started in room ${code} with ${players.length} players. Top card: ${top.color} ${top.value}`
   );
 
+  startTurnClock(io, gameState);
   broadcastUnoState(io, code);
   return gameState;
 }
@@ -129,6 +137,7 @@ export function stopUnoGame(roomCode) {
   const game = activeUnoGames.get(code);
   if (game) {
     if (game.unoTimer) clearTimeout(game.unoTimer);
+    clearTurnClock(game);
     activeUnoGames.delete(code);
     console.log(`[UNO] Cleaned up game for room ${code}`);
   }
@@ -141,6 +150,57 @@ const mod = (n, m) => ((n % m) + m) % m;
  */
 function advanceTurn(game, steps = 1) {
   game.turnIdx = mod(game.turnIdx + steps * game.direction, game.players.length);
+  game.drawnCardId = null;
+}
+
+/**
+ * Turn clock: visible deadline on every seat, and a clock that resolves the turn
+ * for a player who never acts.
+ */
+function clearTurnClock(game) {
+  if (game.turnTimer) clearTimeout(game.turnTimer);
+  game.turnTimer = null;
+  game.turnDeadline = null;
+}
+
+function startTurnClock(io, game, ms = TURN_MS) {
+  clearTurnClock(game);
+  if (game.status !== 'in_game') return;
+  const deadline = Date.now() + ms;
+  game.turnDeadline = deadline;
+  game.turnTimer = setTimeout(() => {
+    const live = activeUnoGames.get(game.roomCode);
+    if (!live || live !== game || live.status !== 'in_game' || live.turnDeadline !== deadline) return;
+    resolveTurn(io, live, { timedOut: true });
+  }, ms + 40);
+  if (typeof game.turnTimer.unref === 'function') game.turnTimer.unref();
+}
+
+/**
+ * Draw for the player whose clock ran out, then hand the turn on.
+ */
+function resolveTurn(io, game, { timedOut = false } = {}) {
+  const nickname = game.players[game.turnIdx];
+  if (!nickname) return;
+  const take = game.pendingDraw > 0 ? game.pendingDraw : 1;
+  const drawn = drawCards(game, take);
+  game.hands[nickname].push(...drawn);
+  game.pendingDraw = 0;
+
+  if (game.unoPending === nickname && (game.hands[nickname] || []).length !== 1) {
+    if (game.unoTimer) clearTimeout(game.unoTimer);
+    game.unoPending = null;
+    game.unoDeadline = null;
+    game.unoTimer = null;
+  }
+
+  game.lastAction = timedOut
+    ? `${nickname} ran out of time — drew ${drawn.length} and passed`
+    : `${nickname} drew ${drawn.length} and passed`;
+
+  advanceTurn(game);
+  startTurnClock(io, game);
+  broadcastUnoState(io, game.roomCode);
 }
 
 /**
@@ -175,7 +235,8 @@ function publicState(game) {
     players: game.players.map((nick, idx) => ({
       nickname: nick,
       handCount: (game.hands[nick] || []).length,
-      isTurn: idx === game.turnIdx
+      isTurn: idx === game.turnIdx,
+      atUno: (game.hands[nick] || []).length === 1 && game.unoPending !== nick
     })),
     topCard: game.discard[game.discard.length - 1],
     currentColor: game.current.color,
@@ -184,6 +245,11 @@ function publicState(game) {
     discardSize: game.discard.length,
     pendingDraw: game.pendingDraw,
     unoPending: game.unoPending,
+    unoCallMs: UNO_CALL_WINDOW_MS,
+    turnEndsAt: game.turnDeadline,
+    turnMs: TURN_MS,
+    turnNickname: game.players[game.turnIdx] || null,
+    lastAction: game.lastAction,
     isForfeit: Boolean(game.isForfeit),
     forfeitedBy: game.forfeitedBy,
     rematchVotes: Array.from(game.rematchVotes)
@@ -212,7 +278,8 @@ export function broadcastUnoState(io, roomCode) {
         yourHand: hand,
         playableIds: mustDraw ? [] : hand.filter((c) => isPlayable(game, c)).map((c) => c.id),
         isYourTurn,
-        mustDraw
+        mustDraw,
+        drawnCardId: isYourTurn ? game.drawnCardId : null
       };
       safeEmit(io, p.nickname, io.to(p.socketId), 'uno:session', session);
     }
@@ -241,6 +308,7 @@ async function finishGame(io, game, winnerNickname) {
     clearTimeout(game.unoTimer);
     game.unoTimer = null;
   }
+  clearTurnClock(game);
   game.unoPending = null;
   game.unoDeadline = null;
   game.status = 'finished';
@@ -310,6 +378,11 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
     return { success: false, error: 'That card cannot be played right now.' };
   }
 
+  // Drew this turn? That card is the only one you may play (or pass).
+  if (game.drawnCardId && card.id !== game.drawnCardId) {
+    return { success: false, error: 'You drew this turn — play the drawn card or pass.' };
+  }
+
   if (card.color === 'wild') {
     if (!COLORS.includes(chosenColor)) {
       return { success: false, error: 'Choose a color for your wild card.' };
@@ -330,24 +403,35 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
 
   if (card.type === 'number') {
     game.current = { color: card.color, type: 'number', value: card.value };
+    game.lastAction = `${nickname} played ${card.color} ${card.value}`;
     advanceTurn(game, 1);
   } else if (card.color === 'wild') {
     game.current = { color: chosenColor, type: 'wild', value: null };
     if (card.type === 'wild4') {
       game.pendingDraw = 4;
+      game.lastAction = `${nickname} played Wild +4 — pick a colour: ${chosenColor}`;
+    } else {
+      game.lastAction = `${nickname} played Wild — colour is ${chosenColor}`;
     }
     advanceTurn(game, 1);
   } else if (card.type === 'skip') {
+    const skipped = game.players[mod(game.turnIdx + game.direction, game.players.length)];
     game.current = { color: card.color, type: 'skip', value: null };
-    advanceTurn(game, game.players.length === 2 ? 2 : 2); // skipped seat
+    game.lastAction = `${nickname} played Skip — ${skipped} loses their turn`;
+    advanceTurn(game, 2); // skip the next seat
   } else if (card.type === 'reverse') {
     game.direction *= -1;
     game.current = { color: card.color, type: 'reverse', value: null };
+    game.lastAction =
+      game.players.length === 2
+        ? `${nickname} played Reverse — it acts as a Skip in a duel`
+        : `${nickname} played Reverse — direction flipped`;
     // With 2 players, Reverse acts like a Skip
     advanceTurn(game, game.players.length === 2 ? 2 : 1);
   } else if (card.type === 'draw2') {
     game.current = { color: card.color, type: 'draw2', value: null };
     game.pendingDraw = 2;
+    game.lastAction = `${nickname} played +2 — the next seat must draw 2`;
     advanceTurn(game, 1);
   }
 
@@ -366,6 +450,7 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
   if (hand.length === 1) {
     game.unoPending = nickname;
     game.unoDeadline = Date.now() + UNO_CALL_WINDOW_MS;
+    game.lastAction = `${nickname} is down to one card — call UNO!`;
     game.unoTimer = setTimeout(() => {
       const g = activeUnoGames.get(game.roomCode);
       if (!g || g.status !== 'in_game' || g.unoPending !== nickname) return;
@@ -374,6 +459,7 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
     }, UNO_CALL_WINDOW_MS);
   }
 
+  startTurnClock(io, game);
   broadcastUnoState(io, roomCode);
   // NOTE: never return the raw internal game state — it contains a Node Timeout
   // (game.unoTimer) whose _idlePrev/_idleNext form a circular list that socket.io
@@ -387,6 +473,7 @@ function penalizePlayer(io, game, nickname, count) {
   hand.push(...drawCards(game, count));
   game.unoPending = null;
   game.unoDeadline = null;
+  game.lastAction = `${nickname} did not call UNO — penalty +${count} cards`;
   if (game.unoTimer) {
     clearTimeout(game.unoTimer);
     game.unoTimer = null;
@@ -409,30 +496,65 @@ export function handleDraw(io, roomCode, nickname) {
     return { success: false, error: `It's ${game.players[game.turnIdx]}'s turn!` };
   }
 
-  const take = game.pendingDraw > 0 ? game.pendingDraw : 1;
   const wasPending = game.pendingDraw > 0;
+  if (!wasPending && game.drawnCardId) {
+    return { success: false, error: 'You already drew this turn — play the card or pass.' };
+  }
+
+  const take = wasPending ? game.pendingDraw : 1;
   game.pendingDraw = 0;
 
   const drawn = drawCards(game, take);
   game.hands[nickname].push(...drawn);
   console.log(`[UNO] ${nickname} drew ${drawn.length} card${drawn.length === 1 ? '' : 's'}`);
 
+  // Classic rule: the card you draw is yours to play if it matches. Otherwise the
+  // turn is over and the seat behind you is up.
+  const drawnCard = wasPending ? null : drawn[0];
+  const canPlayDrawn = Boolean(drawnCard && isPlayable(game, drawnCard));
+
   if (wasPending) {
-    // After absorbing a Draw 2 / Wild +4 stack, the player is skipped
+    game.lastAction = `${nickname} absorbed the draw stack (+${drawn.length}) and lost the turn`;
     advanceTurn(game, 1);
+  } else if (canPlayDrawn) {
+    game.drawnCardId = drawnCard.id;
+    game.lastAction = `${nickname} drew a card — playable, their turn continues`;
   } else {
+    game.lastAction = `${nickname} drew a card — nothing to play, turn passes`;
     advanceTurn(game, 1);
   }
 
   if (game.unoPending && game.unoPending !== nickname) {
-    keepUnoWindow(game);
+    keepUnoWindow(io, game);
   }
 
+  startTurnClock(io, game);
   broadcastUnoState(io, roomCode);
-  return { success: true, drawn: drawn.length };
+  return { success: true, drawn: drawn.length, drawnCard, canPlayDrawn, turnContinues: canPlayDrawn };
 }
 
-function keepUnoWindow(game) {
+/**
+ * Give up the turn (used after drawing a card you do not want to play).
+ */
+export function handlePass(io, roomCode, nickname) {
+  const game = activeUnoGames.get(roomCode?.toUpperCase()?.trim());
+  if (!game) return { success: false, error: 'No UNO game active in this room.' };
+  if (game.status !== 'in_game') return { success: false, error: 'Game has already concluded.' };
+
+  const seat = game.players.indexOf(nickname);
+  if (seat === -1) return { success: false, error: 'You are not in this game.' };
+  if (game.turnIdx !== seat) {
+    return { success: false, error: `It's ${game.players[game.turnIdx]}'s turn!` };
+  }
+
+  game.lastAction = `${nickname} passed`;
+  advanceTurn(game);
+  startTurnClock(io, game);
+  broadcastUnoState(io, roomCode);
+  return { success: true };
+}
+
+function keepUnoWindow(io, game) {
   if (game.unoTimer) {
     clearTimeout(game.unoTimer);
     game.unoTimer = null;
@@ -467,6 +589,7 @@ export function callUno(io, roomCode, nickname) {
   game.unoTimer = null;
   game.unoPending = null;
   game.unoDeadline = null;
+  game.lastAction = `${nickname} called UNO!`;
 
   console.log(`[UNO] ${nickname} called UNO!`);
   broadcastUnoState(io, roomCode);
@@ -552,7 +675,8 @@ export function handleUnoPlayerLeave(io, roomCode, nickname) {
     game.unoDeadline = null;
     game.unoTimer = null;
   }
-
+  if (game.players[game.turnIdx] === undefined) game.turnIdx = 0;
+  startTurnClock(io, game);
   broadcastUnoState(io, game.roomCode);
 }
 
@@ -586,6 +710,18 @@ export function registerUnoHandlers(io, socket) {
       return;
     }
     const result = await playCard(io, roomCode, me.nickname, cardId, chosenColor);
+    if (typeof callback === 'function') callback(result);
+  });
+
+  // Pass the turn after drawing (or when stuck)
+  socket.on('uno:pass', ({ roomCode }, callback) => {
+    const room = getRoom(roomCode);
+    const me = room?.players.find((p) => p.socketId === socket.id);
+    if (!me) {
+      if (typeof callback === 'function') callback({ success: false, error: 'You are not in this room.' });
+      return;
+    }
+    const result = handlePass(io, roomCode, me.nickname);
     if (typeof callback === 'function') callback(result);
   });
 

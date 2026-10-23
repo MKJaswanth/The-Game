@@ -48,6 +48,7 @@ export default function Uno({ roomCode, onExit }) {
   const [wildPick, setWildPick] = useState(null); // card object awaiting color
   const [tick, setTick] = useState(0);
   const toastTimer = useRef(null);
+  const lastActionRef = useRef('');
 
   const showToast = (msg) => {
     setToast(msg);
@@ -83,6 +84,14 @@ export default function Uno({ roomCode, onExit }) {
     };
   }, [roomCode]);
 
+  // Announce server-side table events (UNO calls, penalties, skips, timeouts).
+  const lastAction = game?.lastAction || '';
+  useEffect(() => {
+    if (!lastAction || lastAction === lastActionRef.current) return;
+    lastActionRef.current = lastAction;
+    showToast(lastAction);
+  }, [lastAction]);
+
   if (!game) {
     return (
       <div className="uno-wrap">
@@ -101,9 +110,27 @@ export default function Uno({ roomCode, onExit }) {
   const unoWindowLeft = game.unoDeadline ? Math.max(0, Math.ceil((game.unoDeadline - Date.now()) / 1000)) : 0;
   const isFinal = game.status === 'finished';
 
+  // Turn clock (server-authoritative deadline, re-rendered by the 500 ms tick).
+  const turnMs = game.turnMs || 25000;
+  const turnLeftMs = game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : 0;
+  const turnLeft = Math.ceil(turnLeftMs / 1000);
+  const turnPct = Math.max(0, Math.min(100, (turnLeftMs / turnMs) * 100));
+  const turnUrgent = turnLeftMs > 0 && turnLeftMs <= 6000;
+
+  // After drawing you may only play that card (or pass).
+  const drawnCardId = game.drawnCardId || null;
+  const allowedIds = drawnCardId ? [drawnCardId] : playableIds;
+  const noPlayableCards = isMyTurn && !mustDraw && playableIds.length === 0 && !drawnCardId;
+
   const doPlay = (card) => {
-    if (!playableIds.includes(card.id)) {
-      showToast(mustDraw ? `You must draw ${game.pendingDraw} first!` : 'That card cannot be played right now.');
+    if (!allowedIds.includes(card.id)) {
+      showToast(
+        drawnCardId
+          ? 'You drew this turn — play the drawn card or pass.'
+          : mustDraw
+            ? `You must draw ${game.pendingDraw} first!`
+            : 'That card cannot be played right now.'
+      );
       return;
     }
     if (card.color === 'wild') {
@@ -126,6 +153,12 @@ export default function Uno({ roomCode, onExit }) {
   const doDraw = () => {
     socket.emit('uno:draw', { roomCode }, (res) => {
       if (res && !res.success) showToast(res.error || 'Cannot draw right now.');
+    });
+  };
+
+  const doPass = () => {
+    socket.emit('uno:pass', { roomCode }, (res) => {
+      if (res && !res.success) showToast(res.error || 'Cannot pass right now.');
     });
   };
 
@@ -197,6 +230,7 @@ export default function Uno({ roomCode, onExit }) {
           <div key={p.nickname} className={`uno-opp ${p.isTurn ? 'is-turn' : ''} ${p.nickname === nickname ? 'is-me' : ''}`}>
             <Avatar nickname={p.nickname} size="sm" />
             <span className="uo-name">{p.nickname}{p.nickname === nickname ? ' (you)' : ''}</span>
+            {p.atUno && <span className="uo-uno mono">UNO</span>}
             <span className="uo-count mono">{p.handCount}</span>
           </div>
         ))}
@@ -209,6 +243,20 @@ export default function Uno({ roomCode, onExit }) {
           {' · deck '}{game.deckSize}
           {game.pendingDraw > 0 && <span className="uno-pendwarn"> · +{game.pendingDraw} PENDING</span>}
         </div>
+
+        {game.turnEndsAt && (
+          <div className={`uno-clock ${isMyTurn ? 'is-me' : ''} ${turnUrgent ? 'is-urgent' : ''}`}>
+            <div className="ucl-row">
+              <span className="ucl-who mono">
+                {isMyTurn ? 'YOUR TURN' : `${(game.turnNickname || '').toUpperCase()}’S TURN`}
+              </span>
+              <span className="ucl-time mono">{turnLeft}s</span>
+            </div>
+            <div className="ucl-track">
+              <span className="ucl-fill" style={{ width: `${turnPct}%` }} />
+            </div>
+          </div>
+        )}
 
         <div className="uno-piles">
           <button
@@ -238,6 +286,21 @@ export default function Uno({ roomCode, onExit }) {
           </div>
         )}
 
+        {noPlayableCards && (
+          <div className="uno-banner uno-banner--hint">
+            No card matches {game.currentColor} — tap the deck to pick one.
+          </div>
+        )}
+
+        {drawnCardId && isMyTurn && (
+          <div className="uno-banner uno-banner--drawn">
+            You drew a playable card — play it, or{' '}
+            <button type="button" className="uno-passlink" onClick={doPass}>pass the turn</button>.
+          </div>
+        )}
+
+        {game.lastAction && <div className="uno-feed mono">{game.lastAction}</div>}
+
         {game.unoPending && game.unoPending !== nickname && (
           <button type="button" className="uno-catch" onClick={() => doCatch(game.unoPending)}>
             Catch {game.unoPending}! (+2)
@@ -257,8 +320,8 @@ export default function Uno({ roomCode, onExit }) {
           <HandCard
             key={card.id}
             card={card}
-            playable={isSpectator ? false : playableIds.includes(card.id)}
-            dimmed={!isMyTurn}
+            playable={isSpectator ? false : allowedIds.includes(card.id)}
+            dimmed={!isMyTurn || (Boolean(drawnCardId) && card.id !== drawnCardId)}
             isTurn={isMyTurn}
             onClick={() => doPlay(card)}
           />

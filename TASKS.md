@@ -180,6 +180,10 @@
 | M11-12 | Client: face-down opponent card stacks with live counts | M11 | 2026-10-20 |
 | M11-13 | Final screen — winner podium, standings, Play Again | M11 | 2026-10-20 |
 | M11-14 | Submit winner + loser scores to Supabase | M11 | 2026-10-20 |
+| M11-15 | Server: per-turn clock (`turnEndsAt`) with auto draw-and-pass on timeout | M11 | 2026-10-23 |
+| M11-16 | Server: classic draw-then-play rule + explicit `uno:pass` action | M11 | 2026-10-23 |
+| M11-17 | Client: turn countdown bar, no-playable-card hint, drawn-card banner with pass link | M11 | 2026-10-23 |
+| M11-18 | Client: table action feed (plays, skips, UNO calls, penalties) + UNO badge in the rail | M11 | 2026-10-23 |
 | M12-01 | Server-authoritative Flappy flight model (gravity, flap, ground/ceiling) | M12 | 2026-10-21 |
 | M12-02 | Pipe course generation, gap tuning, scroll ramp | M12 | 2026-10-21 |
 | M12-03 | Collision detection — pipe columns and ground | M12 | 2026-10-21 |

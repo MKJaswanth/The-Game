@@ -423,6 +423,87 @@
   text-overflow: ellipsis;
 }
 
+/* ---------- turn clock ---------- */
+.uno-clock {
+  width: min(340px, 78vw);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ucl-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-3);
+}
+.uno-clock.is-me .ucl-who { color: var(--accent-hi); }
+.ucl-time {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.ucl-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.ucl-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 400ms linear, background 200ms ease;
+}
+.uno-clock.is-urgent .ucl-time { color: var(--red); }
+.uno-clock.is-urgent .ucl-fill { background: var(--red); }
+.uno-clock.is-urgent { animation: unoUrgent 900ms ease-in-out infinite; }
+@keyframes unoUrgent {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* UNO badge in the rail */
+.uo-uno {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #16130c;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  padding: 1px 6px;
+}
+
+/* table feed + pass affordances */
+.uno-feed {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  text-align: center;
+  max-width: 460px;
+  min-height: 14px;
+}
+.uno-banner--hint {
+  border-left-color: var(--accent);
+  color: var(--text-2);
+}
+.uno-banner--drawn {
+  border-left-color: var(--green, #22c55e);
+}
+.uno-passlink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  color: var(--accent-hi);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* ---------- responsive (360px min) ---------- */
 @media (max-width: 640px) {
   .uno-piles { gap: var(--s3); }

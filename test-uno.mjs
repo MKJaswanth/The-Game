@@ -57,6 +57,8 @@ try {
   ok(sA?.players.length === 2, 'room has 2 seats');
   ok(sA?.topCard && sA.topCard.type === 'number', `top card is a number (${sA.topCard.color} ${sA.topCard.value})`);
   ok(sA.isYourTurn !== sB.isYourTurn, 'exactly one player has the turn');
+  ok(typeof sA.turnEndsAt === 'number' && sA.turnEndsAt > Date.now(), 'turn has a visible deadline');
+  ok(sA.players.every((p) => p.atUno === false), 'nobody is at UNO in a fresh deal');
 
   // 4) Out-of-turn play rejected
   const notTurnSock = sA.isYourTurn ? B : A;
@@ -65,6 +67,7 @@ try {
   ok(r && !r.success && /turn/i.test(r.error || ''), `out-of-turn play rejected (${r?.error})`);
 
   // 5) Full game loop — event driven, state updated by uno:session listeners
+  let unoCallVerified = 0;
   let guard = 0;
   while (guard++ < 500) {
     const s1 = state.Alice, s2 = state.Bob;
@@ -76,12 +79,32 @@ try {
     if (!s.isYourTurn) { await wait(80); continue; }
 
     const playable = s.playableIds || [];
+    const handBefore = (s.yourHand || []).length;
     if (playable.length > 0) {
       const card = (s.yourHand || []).find((c) => c.id === playable[0]);
       const payload = { roomCode, cardId: card.id };
       if (card.color === 'wild') payload.chosenColor = 'red';
       r = await emit(sock, 'uno:play', payload);
       if (!r?.success) { console.log('play stopped:', r?.error); break; }
+
+      // Going from 2 cards to 1 must open an UNO window that we can answer.
+      if (handBefore === 2) {
+        await wait(120);
+        const who = sock.nick;
+        const mine = state[who];
+        ok(mine?.unoPending === who, 'playing down to one card opens the UNO window');
+        const called = await emit(sock, 'uno:call', { roomCode });
+        ok(called?.success, 'UNO can be called inside the window');
+        await wait(120);
+        const after = state[who];
+        const mySeat = after?.players?.find((p) => p.nickname === who);
+        ok(
+          after?.unoPending !== who,
+          `calling UNO removes my pending penalty (pending=${after?.unoPending}, cards=${mySeat?.handCount})`
+        );
+        ok(mySeat?.atUno === true, `the table sees the UNO badge (atUno=${mySeat?.atUno})`);
+        unoCallVerified += 1;
+      }
     } else {
       r = await emit(sock, 'uno:draw', { roomCode });
       if (!r?.success) { console.log('draw stopped:', r?.error); break; }
@@ -95,6 +118,7 @@ try {
   ok(finalWinner && ['Alice', 'Bob'].includes(finalWinner), `game ended with winner (${finalWinner})`);
   ok(endPayload && ['Alice', 'Bob'].includes(endPayload.winner), 'uno:end broadcast received');
   ok(endPayload?.standings?.length === 2, 'standings include both players');
+  ok(unoCallVerified > 0, `UNO call window exercised (${unoCallVerified}×)`);
 
   // 6) Score persistence check
   const scoreRes = await fetch('http://localhost:4000/api/players/Alice');
