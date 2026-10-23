@@ -2,6 +2,8 @@
 
 This document provides step-by-step instructions for deploying "The Game" to production.
 
+**Live:** https://the-game-31wo.onrender.com (Render free plan, single service, auto-deploys `main`).
+
 ---
 
 ## Architecture Overview
@@ -28,6 +30,8 @@ The repo root contains [`render.yaml`](render.yaml):
 - **Health check:** `/health`
 
 1. Push the repo to GitHub.
+
+> **Pick the region closest to your players.** The websocket carries every move, so round-trip latency *is* the game's feel: a free instance in Oregon measured ~244 ms from India, which makes the reflex games (Flappy especially) hard to play. Render fixes the region at creation time — to change it, delete the service and re-create the Blueprint in the nearer region.
 2. Render → **New + → Blueprint** → pick the repo (it reads `render.yaml`).
 3. Fill the `sync: false` secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (all optional — the app runs without them, using the in-memory score store).
 4. Deploy, then open the Render URL — landing page, all eight games and websockets share that one origin.
