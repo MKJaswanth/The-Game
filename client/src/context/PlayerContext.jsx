@@ -64,8 +64,17 @@ export function PlayerProvider({ children }) {
         socket.connect();
       }
 
+      // The acknowledgement and the timeout race each other, so whichever gets
+      // there first claims the join. Reading `isJoining` in the timeout would
+      // see the value from the render that created this closure (always false),
+      // which left the button spinning on "Entering…" forever when the server
+      // never answered.
+      let settled = false;
+
       // Emit player:join with acknowledgment callback
       socket.emit('player:join', { nickname: validation.value }, (response) => {
+        if (settled) return;
+        settled = true;
         setIsJoining(false);
         if (response && response.success) {
           setNickname(validation.value);
@@ -80,12 +89,12 @@ export function PlayerProvider({ children }) {
 
       // 5-second timeout safeguard
       setTimeout(() => {
-        if (isJoining) {
-          setIsJoining(false);
-          const timeoutErr = 'Connection timed out. Please try again.';
-          setJoinError(timeoutErr);
-          reject(new Error(timeoutErr));
-        }
+        if (settled) return;
+        settled = true;
+        setIsJoining(false);
+        const timeoutErr = 'Connection timed out. Please try again.';
+        setJoinError(timeoutErr);
+        reject(new Error(timeoutErr));
       }, 5000);
     });
   };
