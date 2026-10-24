@@ -218,3 +218,6 @@
 | M14-10 | Final standings screen with winner, Play Again voting, Leave | M14 | 2026-10-21 |
 | M14-11 | Persist scores to Supabase + leaderboard/profile/label wiring | M14 | 2026-10-21 |
 
+| M15-01 | Fix the live-only Trivia crash (`useCallback` used without an import in `Trivia.jsx`) | M15 | 2026-10-24 |
+| M15-02 | Add `test-quiz-games.mjs` — Trivia (solo + 2P) and Word Scramble (solo) played to completion over Socket.IO | M15 | 2026-10-24 |
+| M15-03 | Verify the deployed origin in a browser: UNO update, Trivia, Word Scramble, Tic Tac Toe vs bot, Chess lobby | M15 | 2026-10-24 |

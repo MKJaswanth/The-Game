@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePlayer } from '../../context/PlayerContext';
 import Avatar from '../../components/Avatar.jsx';
 import Badge from '../../components/Badge.jsx';

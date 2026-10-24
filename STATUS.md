@@ -44,6 +44,12 @@
 - Client `games/emoji/Emoji.jsx` + `emoji.css`: emoji composer with 8 palette categories, live preview, undo/clear, timer bar, animated "writing a clue" state with answer blanks, guess input with a live public guess feed, reveal card, ranked final screen and a sticky score rail
 - Verified with a 55-assertion five-round Socket.IO suite (`test-emoji.mjs`) — answer privacy, clue authorization, self-guess rejection, scoring totals, rotation, persistence, rematch — plus browser play against `emoji-bot.mjs` covering the composer, clue broadcast, guess scoring and reveals
 
+**M15 In Progress — Phase 2 live QA.**
+- UNO turn clock, draw-then-play rule, pass action and table feed are live on Render (`3f53413`); the deployed bundle serves the countdown bar, drawn-card banner and UNO badge
+- Fixed a production-only crash that blanked every Trivia room: `Trivia.jsx` called `useCallback` without importing it, so React threw `ReferenceError: useCallback is not defined` while rendering and the whole room route unmounted. Trivia has been openable-but-blank on the deployed site since M5; it now renders, answers and scores in the browser
+- New `test-quiz-games.mjs` plays both quiz games to completion over Socket.IO against any `SERVER_URL`: Trivia solo + 2-player (10 questions, speed scoring, duplicate-answer rejection, rankings) and Word Scramble solo (10 rounds, wrong/right guesses, `scramble:get_state`, final score). All green against localhost and against the live Render URL
+- Browser pass over the deployed origin: hub, Trivia solo (question, options, scoreboard, advancing rounds), Word Scramble solo (scrambled letters, solved +320 pts, reveal), Tic Tac Toe vs CyberBot, Chess lobby
+
 **Next Up:** M15 — Phase 2 QA & Deploy Update (US-022–031 regression pass)
 
 ---
@@ -95,6 +101,7 @@
 | Issue | Impact | Notes |
 |---|---|---|
 | ~~Reloading the page mid-game drops socket.io room membership~~ | **Fixed (M15):** a refresh, a dropped Wi-Fi link or a sleeping laptop now keeps the seat. The server parks a live seat for 45 s and the tab reclaims it with the resume token it stored in `sessionStorage`; nickname-only takeover is allowed for a seat the server already sees as disconnected, so a stranger can never evict a connected player. The room also shows a “loss connection — holding the seat” banner while somebody is away. | Covered by `test-reconnect.mjs` (19 checks: token issue, no token leakage in broadcasts, resume, hijack rejection, grace expiry) and by a browser refresh during a live chess game. |
+| ~~Trivia room renders blank on the deployed site~~ | **Fixed (M15):** `Trivia.jsx` used `useCallback` without importing it, so the room route crashed with `ReferenceError: useCallback is not defined` and rendered nothing but the footer. Import added; the room now renders, scores and advances. | Caught by driving the live URL in a browser and reading the console; covered from then on by `test-quiz-games.mjs` and this browser check. |
 | Flappy broadcast measured at ~26/s instead of 30/s | Slightly less smooth motion on slow machines | `setInterval` drift on Windows; client already interpolates between snapshots |
 | Chess has no move clock | A player who walks away leaves the game open indefinitely | Groundwork exists (`startedAt`, `moveCount`); add a per-move timeout in M15 |
 | Emoji round rests on the honour system for clue quality | A clue-giver can send irrelevant emoji and stall the round | Guessers can still solve by luck; a "skip/re-roll" vote is the natural M15+ fix |
