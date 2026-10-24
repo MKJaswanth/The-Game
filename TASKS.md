@@ -221,3 +221,6 @@
 | M15-01 | Fix the live-only Trivia crash (`useCallback` used without an import in `Trivia.jsx`) | M15 | 2026-10-24 |
 | M15-02 | Add `test-quiz-games.mjs` — Trivia (solo + 2P) and Word Scramble (solo) played to completion over Socket.IO | M15 | 2026-10-24 |
 | M15-03 | Verify the deployed origin in a browser: UNO update, Trivia, Word Scramble, Tic Tac Toe vs bot, Chess lobby | M15 | 2026-10-24 |
+| M15-04 | Browser-verify the remaining two games on the deployed origin — Snake solo (start, eat, game over, score persisted) and Emoji Guessing with a scripted bot (composer, guess, reveal) | M15 | 2026-10-24 |
+| M15-05 | Fix `joinHub` never resolving when the server does not acknowledge the join (stale `isJoining` read in the timeout) | M15 | 2026-10-24 |
+| M15-06 | Make the suites judge server config instead of fixed timings — Flappy end-listener race, UNO `turnMs` budget, reconnect grace `SKIP` off localhost | M15 | 2026-10-24 |
