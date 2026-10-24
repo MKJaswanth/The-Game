@@ -4,12 +4,12 @@
  */
 import { io } from './client/node_modules/socket.io-client/build/esm/index.js';
 
-const URL = 'http://localhost:4000';
+const SERVER = process.env.SERVER_URL || 'http://localhost:4000';
 const roomCode = (process.argv[2] || '').toUpperCase();
 if (!roomCode) { console.error('Usage: node uno-bot.mjs <ROOMCODE>'); process.exit(1); }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const s = io(URL, { transports: ['websocket'] });
+const s = io(SERVER, { transports: ['websocket'] });
 
 let state = null;
 s.on('uno:session', (g) => { state = g; });
