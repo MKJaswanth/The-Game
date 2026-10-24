@@ -9,7 +9,7 @@
 
 **Phase:** Phase 2 — Growth  
 **Active Milestone:** M14 Complete — Emoji Guessing  
-**Last Updated:** 2026-10-21  
+**Last Updated:** 2026-10-24  
 **Overall Progress:** Milestones 0–14 Complete (15 / 20 Milestones — 75%)  
 **Live LAN Hosting:**  
 - 📱 Frontend: `http://192.168.0.110:5173/` (Playable on any phone/device on Wi-Fi)  
@@ -49,6 +49,10 @@
 - Fixed a production-only crash that blanked every Trivia room: `Trivia.jsx` called `useCallback` without importing it, so React threw `ReferenceError: useCallback is not defined` while rendering and the whole room route unmounted. Trivia has been openable-but-blank on the deployed site since M5; it now renders, answers and scores in the browser
 - New `test-quiz-games.mjs` plays both quiz games to completion over Socket.IO against any `SERVER_URL`: Trivia solo + 2-player (10 questions, speed scoring, duplicate-answer rejection, rankings) and Word Scramble solo (10 rounds, wrong/right guesses, `scramble:get_state`, final score). All green against localhost and against the live Render URL
 - Browser pass over the deployed origin: hub, Trivia solo (question, options, scoreboard, advancing rounds), Word Scramble solo (scrambled letters, solved +320 pts, reveal), Tic Tac Toe vs CyberBot, Chess lobby
+- **Quiz wins were recorded as losses (2026-10-24):** Trivia and Word Scramble called `recordScore` without a `won` flag, so the match winner was stored as a defeat. The top score (ties included) is now marked as a win; `test-quiz-games.mjs` asserts the result reaches the profile store with `totalWins >= 1`, and the whole suite (113 assertions) passes against the deployed origin
+- **Flappy "Race Again" bounced to the hub (2026-10-24):** restarting a race tore down the previous one with a `flappy:closed` broadcast, which the client reads as "the room is gone". The restart now clears the old tick silently and `test-flappy.mjs` asserts a rematch restarts without a close event
+- `test-flappy.mjs` no longer blames the server for a long-haul link: the tick-rate sample moved into the countdown (a bird-independent window) and the reflex-dependent survival checks report `SKIP` with the measured round trip above a local-link threshold
+- Full live regression on the deployed origin: every suite green via `SERVER_URL` (chess 44, emoji 81, quiz games 113, uno + uno-turns 25, flappy 21) and every game opened in the deployed browser — Snake (steered, survived), Trivia solo (answer + reveal + scoreboard), Word Scramble solo (solved ROCKET +310), Tic Tac Toe vs CyberBot (full match to defeat screen), Chess vs `chess-bot.mjs` (e4 e5 through the move list), Emoji vs `emoji-bot.mjs` (composer → clue broadcast → guess feed), UNO turn clock with a bot seat, Flappy (course canvas, flap button, ranked results, rematch)
 
 **Next Up:** M15 — Phase 2 QA & Deploy Update (US-022–031 regression pass)
 

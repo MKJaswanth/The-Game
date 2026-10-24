@@ -204,10 +204,21 @@ async function runTrivia({ solo }) {
   }
   ok(typeof end?.finalScores?.QuizHost === 'number', 'final scores included');
 
+  // A match with no points on the board records nothing, so only a scored
+  // winner proves the result reached the store (and with the right verdict).
   await wait(700);
-  const hostProfile = await profile('QuizHost');
-  ok(hostProfile?.gamesPlayed >= 1, 'trivia result reached the profile store');
-  ok(hostProfile?.totalWins >= 1, 'the trivia winner is recorded as a win, not a loss');
+  const champion = end?.rankings?.[0];
+  if (champion && champion.score > 0) {
+    const champProfile = await profile(champion.nickname);
+    ok(champProfile?.gamesPlayed >= 1, 'trivia result reached the profile store');
+    ok(champProfile?.totalWins >= 1, `the winner is recorded as a win, not a loss (${champion.nickname} ${champion.score})`);
+
+    const board = await fetch(`${SERVER}/api/leaderboard/trivia`).then((r) => r.json()).catch(() => null);
+    const row = (board?.leaderboard || []).find((r) => r.nickname === champion.nickname && r.score === champion.score);
+    ok(row?.won === true, 'the winning leaderboard row is flagged as a win');
+  } else {
+    console.log('NOTE nobody scored in this trivia match — win recording not asserted');
+  }
 
   await emit(A, 'room:leave', { roomCode, nickname: 'QuizHost' });
   if (B) await emit(B, 'room:leave', { roomCode, nickname: 'QuizGuest' });
@@ -304,7 +315,14 @@ async function runScramble() {
   await wait(700);
   const hostProfile = await profile('WordHost');
   ok(hostProfile?.gamesPlayed >= 1, 'scramble result reached the profile store');
-  ok(hostProfile?.totalWins >= 1, 'the scramble winner is recorded as a win, not a loss');
+
+  // Match this run's score, not just the nickname: an older win for the same
+  // callsign would otherwise hide a regression in how wins are recorded.
+  const board = await fetch(`${SERVER}/api/leaderboard/wordscramble`).then((r) => r.json()).catch(() => null);
+  const row = (board?.leaderboard || []).find(
+    (r) => r.nickname === 'WordHost' && r.score === end?.winner?.score
+  );
+  ok(row?.won === true, `the scramble winner is recorded as a win, not a loss (${end?.winner?.score} pts)`);
 
   await emit(A, 'room:leave', { roomCode, nickname: 'WordHost' });
   A.disconnect();
