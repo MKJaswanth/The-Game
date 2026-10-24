@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { usePlayer } from '../context/PlayerContext.jsx';
 import Avatar from '../components/Avatar.jsx';
 import Badge from '../components/Badge.jsx';
@@ -32,7 +32,6 @@ function formatDate(iso) {
 
 export default function Profile() {
   const { nickname: routeNick } = useParams();
-  const navigate = useNavigate();
   const { nickname: myNick } = usePlayer();
   const [player, setPlayer] = useState(null);
   const [history, setHistory] = useState([]);

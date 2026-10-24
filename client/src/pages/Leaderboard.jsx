@@ -144,7 +144,11 @@ export default function Leaderboard() {
           <div>
             <div className="leaderboard-eyebrow">RANKINGS</div>
             <h1 className="leaderboard-title">Global Leaderboard</h1>
-            <p className="leaderboard-subtitle">Live top 20 across all games</p>
+            <p className="leaderboard-subtitle">
+              {activeTab === 'all'
+                ? 'Live top 20 rankings by total points across all games'
+                : `Live top 20 rankings for ${activeTabMeta.title}`}
+            </p>
           </div>
 
           <div className="leaderboard-meta-bar">
@@ -206,9 +210,9 @@ export default function Leaderboard() {
               <tr>
                 <th className="col-rank">#</th>
                 <th>Player</th>
-                <th>Game</th>
-                <th className="col-num">Score</th>
-                <th className="col-date">Date</th>
+                <th>{activeTab === 'all' ? 'Activity' : 'Game'}</th>
+                <th className="col-num">{activeTab === 'all' ? 'Total Points' : 'Score'}</th>
+                <th className="col-date">{activeTab === 'all' ? 'Last Active' : 'Date'}</th>
               </tr>
             </thead>
             <tbody>
@@ -272,7 +276,11 @@ export default function Leaderboard() {
                       </td>
 
                       <td>
-                        <span className="game-name">{game.title}</span>
+                        <span className="game-name">
+                          {activeTab === 'all'
+                            ? (item.gamesPlayed ? `${item.gamesPlayed} ${item.gamesPlayed === 1 ? 'match' : 'matches'}` : 'All games')
+                            : game.title}
+                        </span>
                       </td>
 
                       <td className="col-num">
