@@ -7,6 +7,10 @@ import { io } from './client/node_modules/socket.io-client/build/esm/index.js';
 const URL = process.env.SERVER_URL || 'http://localhost:4000';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The seat grace window is server config (RECONNECT_GRACE_MS, 45 s by default),
+// so only a locally started server with a shortened window can be judged here.
+const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(URL);
+
 const await_ = async (fn, label, timeout = 4000) => {
   const started = Date.now();
   while (Date.now() - started < timeout) {
@@ -101,22 +105,26 @@ try {
   ok(stealMove?.success === false, `stranger cannot move (${stealMove?.error})`);
 
   // --- grace expiry hands the seat back to the room ------------------------
-  const second = await emit(A, 'room:create', { gameType: 'chess', nickname: 'Alice', maxPlayers: 2 });
-  const code2 = second.roomCode;
-  const D = connect('Dana');
-  await await_(() => D.connected, 'fourth client');
-  await emit(D, 'room:join', { roomCode: code2, nickname: 'Dana' });
-  await emit(A, 'room:start', { roomCode: code2 });
-  await await_(() => A.state?.roomCode === code2 && A.state.status === 'in_game', 'second live game');
+  if (!isLocalOrigin) {
+    console.log('SKIP unreturned player is removed once the grace window ends (needs a local server with RECONNECT_GRACE_MS)');
+  } else {
+    const second = await emit(A, 'room:create', { gameType: 'chess', nickname: 'Alice', maxPlayers: 2 });
+    const code2 = second.roomCode;
+    const D = connect('Dana');
+    await await_(() => D.connected, 'fourth client');
+    await emit(D, 'room:join', { roomCode: code2, nickname: 'Dana' });
+    await emit(A, 'room:start', { roomCode: code2 });
+    await await_(() => A.state?.roomCode === code2 && A.state.status === 'in_game', 'second live game');
 
-  D.close();
-  await wait(400);
-  const expired = await await_(
-    () => A.room?.code === code2 && A.room.players.length === 1,
-    'seat released after the grace window',
-    5000
-  );
-  ok(Boolean(expired), 'unreturned player is removed once the grace window ends');
+    D.close();
+    await wait(400);
+    const expired = await await_(
+      () => A.room?.code === code2 && A.room.players.length === 1,
+      'seat released after the grace window',
+      5000
+    );
+    ok(Boolean(expired), 'unreturned player is removed once the grace window ends');
+  }
 
   console.log(failures === 0 ? '\nAll reconnect checks passed.' : `\n${failures} reconnect check(s) failed.`);
 } catch (err) {

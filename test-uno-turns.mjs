@@ -56,10 +56,13 @@ try {
   const before = { nick: A.state.turnNickname, deadline: A.state.turnEndsAt };
   const beforeHand = (before.nick === 'Alice' ? A.state : B.state).yourHand.length;
 
+  // The turn length is server config (UNO_TURN_MS, 25 s in production), so the
+  // wait is derived from the broadcast value rather than a fixed guess.
+  const clockBudget = (Number(A.state.turnMs) || 25000) + 8000;
   const resolved = await await_(
     () => A.state && A.state.turnEndsAt > before.deadline && A.state.lastAction,
     'the clock to resolve the turn',
-    9000
+    clockBudget
   );
   ok(Boolean(resolved), 'turn clock fired on its own');
   ok(A.state.turnNickname !== before.nick, `turn passed to the other seat (${A.state.turnNickname})`);

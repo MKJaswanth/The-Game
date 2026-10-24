@@ -218,6 +218,9 @@ try {
   const solo = client('SoloBird');
   const soloCreated = await emit(solo, 'room:create', { gameType: 'flappy', nickname: 'SoloBird', isSolo: true });
   ok(soloCreated?.success && soloCreated?.room?.status === 'in_game', 'solo Flappy room starts immediately');
+  // Subscribe before waiting: an unflown bird crashes a few seconds in, and the
+  // end event is not replayed to a listener that attaches afterwards.
+  const soloEndPromise = waitFor(solo, 'flappy:end', 25000);
   await wait(3200);
   const soloState = await new Promise((resolve) => {
     solo.on('flappy:state', (st) => resolve(st));
@@ -230,7 +233,7 @@ try {
   // "the room is gone" — every racer got bounced back to the hub on Race Again.
   let closedDuringRematch = false;
   solo.once('flappy:closed', () => { closedDuringRematch = true; });
-  const soloEnd = await waitFor(solo, 'flappy:end', 20000);
+  const soloEnd = await soloEndPromise;
   ok(Boolean(soloEnd), 'solo race ends when the bird crashes');
 
   const rematchState = waitForStatus(solo, ['countdown', 'racing'], 8000);
