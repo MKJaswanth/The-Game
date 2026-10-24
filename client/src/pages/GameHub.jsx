@@ -811,6 +811,8 @@ export default function GameHub() {
           color: #16130c;
         }
         .modal-join-row { display: flex; gap: var(--s2); }
+        .modal-join-row .input-field { flex: 1; min-width: 0; }
+        .modal-join-row .btn { flex: 0 0 auto; }
 
         @media (max-width: 600px) {
           .hub-head { flex-direction: column; align-items: stretch; }
@@ -820,6 +822,7 @@ export default function GameHub() {
           .hub-open-room { align-items: stretch; flex-direction: column; }
           .hub-open-room-action { align-items: stretch; }
           .hub-open-room-btn { width: 100%; }
+          .hub-open-room-grid { grid-template-columns: 1fr; }
           .hub-grid { grid-template-columns: 1fr; }
           .hub-tabs { width: 100%; overflow-x: auto; }
           .hub-tab { flex-shrink: 0; padding: 8px 10px; }

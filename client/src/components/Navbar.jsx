@@ -210,10 +210,19 @@ export default function Navbar() {
         .nav-cta { padding: 7px 16px; font-size: var(--t-sm); }
 
         @media (max-width: 600px) {
+          .nav-inner { gap: var(--s2); }
+          .nav-links { gap: 0; }
           .nav-online { display: none; }
           .nav-chip-name { max-width: 75px; }
           .nav-brand-text { display: none; }
           .nav-link { margin: 10px 4px 0; }
+        }
+
+        @media (max-width: 380px) {
+          .nav-link { gap: 4px; margin-inline: 2px; font-size: var(--t-xs); }
+          .nav-chip { padding-right: 5px; }
+          .nav-chip-name { display: none; }
+          .nav-player { gap: 6px; }
         }
       `}</style>
     </nav>

@@ -453,6 +453,7 @@ const roomStyles = (
       border-radius: var(--r-md);
       color: var(--text-2);
       font-size: var(--t-xs); font-weight: 600;
+      overflow-wrap: anywhere;
     }
     .rreconnect-note strong { color: var(--amber); font-weight: 800; }
 
@@ -512,12 +513,25 @@ const roomStyles = (
 
     @media (max-width: 600px) {
       .rbar { padding: var(--s3) var(--s4); }
+      .rbar-left, .rbar-right { min-width: 0; }
+      .rbar-left { flex: 1 1 180px; }
+      .rbar-game { font-size: var(--t-lg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rbar-player { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rbar-right { flex: 1 1 auto; justify-content: flex-end; }
+      .rcode-block { padding-inline: var(--s3); }
       .rplayers-grid { grid-template-columns: 1fr 1fr; }
       .rlobby-cols { grid-template-columns: 1fr; }
       .rlobby-chat { height: 320px; }
       .ractions { flex-direction: column-reverse; align-items: stretch; }
       .rstart { width: 100%; justify-content: center; }
       .rchat-drawer { bottom: 74px; right: 12px; width: calc(100vw - 24px); height: 420px; }
+    }
+
+    @media (max-width: 380px) {
+      .rbar { align-items: stretch; }
+      .rbar-left, .rbar-right { flex-basis: 100%; }
+      .rbar-right { justify-content: space-between; }
+      .rbar-copy { flex: 1; }
     }
   `}</style>
 );

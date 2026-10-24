@@ -411,6 +411,7 @@
   border-radius: var(--r-sm);
   font-size: var(--t-sm);
   animation: fadeUp 160ms ease both;
+  min-width: 0;
 }
 .emoji-feed-row.is-correct {
   background: var(--green-dim);
@@ -422,8 +423,12 @@
   letter-spacing: 0.06em;
   color: var(--text-3);
   min-width: 62px;
+  max-width: 82px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.emoji-feed-text { color: var(--text); }
+.emoji-feed-text { color: var(--text); min-width: 0; overflow-wrap: anywhere; }
 .emoji-feed-row.is-correct .emoji-feed-text { color: var(--green-hi); font-weight: 700; }
 .emoji-feed-tag {
   margin-left: auto;
@@ -609,4 +614,7 @@
   .emoji-grid { grid-template-columns: repeat(6, 1fr); }
   .emoji-key { font-size: 19px; }
   .emoji-compose-actions { flex-wrap: wrap; }
+  .emoji-compose-actions .btn { flex: 1 1 120px; }
+  .emoji-guess-form { flex-direction: column; }
+  .emoji-guess-form .btn { width: 100%; padding: 10px 16px; }
 }

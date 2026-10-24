@@ -407,3 +407,12 @@
   font-weight: 800;
   color: var(--accent-hi);
 }
+
+@media (max-width: 640px) {
+  .scramble-play-card { padding: var(--s5) var(--s4); }
+  .scramble-stepper-wrap { gap: 4px; padding: 6px 8px; }
+  .scramble-step-dot { width: 22px; height: 22px; font-size: 10px; }
+  .scramble-form { flex-direction: column; }
+  .scramble-form .btn { width: 100%; }
+  .scramble-letter-tile { width: 46px; height: 52px; font-size: var(--t-xl); }
+}

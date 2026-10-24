@@ -265,13 +265,14 @@ export default function Profile() {
           flex-direction: column;
           gap: var(--s5);
         }
-        .prof-id { display: flex; align-items: center; gap: var(--s4); }
-        .prof-id-text { display: flex; flex-direction: column; gap: 2px; }
+        .prof-id { display: flex; align-items: center; gap: var(--s4); min-width: 0; }
+        .prof-id-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .prof-id-name {
           display: flex; align-items: center; gap: var(--s3);
           font-size: var(--t-3xl); font-weight: 800; color: var(--text);
-          letter-spacing: -0.01em;
+          letter-spacing: -0.01em; min-width: 0; overflow: hidden;
         }
+        .prof-id-name > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .prof-id-sub { color: var(--text-3); font-size: var(--t-xs); text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--mono); }
         .prof-source { margin-left: auto; font-size: 10px; color: var(--text-3); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px 9px; }
         .prof-stats {
@@ -327,6 +328,10 @@ export default function Profile() {
         @media (max-width: 640px) {
           .prof-stats { grid-template-columns: 1fr 1fr; }
           .prof-source { display: none; }
+          .prof-card { padding: var(--s5) var(--s4); min-width: 0; }
+          .prof-id-name { font-size: var(--t-2xl); }
+          .prof-hist-table { display: block; overflow-x: auto; white-space: nowrap; }
+          .prof-hist-table thead, .prof-hist-table tbody { display: table; width: 100%; min-width: 470px; }
         }
       `}</style>
     </div>

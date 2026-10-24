@@ -151,9 +151,14 @@
 }
 
 @media (max-width: 640px) {
+  .trivia-question-card { padding: var(--s5) var(--s4); }
+  .trivia-question-text { font-size: var(--t-xl); margin-bottom: var(--s5); }
+  .trivia-option-btn { padding: var(--s4); }
   .trivia-options-grid {
     grid-template-columns: 1fr;
   }
+  .trivia-stepper-wrap { flex-wrap: wrap; gap: 4px; padding: 6px 8px; }
+  .trivia-step-dot { width: 22px; height: 22px; font-size: 10px; }
 }
 
 .trivia-option-btn {

@@ -397,6 +397,12 @@ img, svg { vertical-align: middle; }
   animation: slideUp 200ms var(--ease-spring) both;
 }
 
+/* Keep every flex/grid child shrinkable so narrow screens do not create a
+   second horizontal page. Individual game screens add their own tighter
+   rules below where a board or control needs special treatment. */
+button, input, select, textarea { min-width: 0; }
+.container, .page, #root { min-width: 0; }
+
 /* ─────────────────────────────────────────────────────────
    UTILITIES & POLISH
 ───────────────────────────────────────────────────────── */
@@ -468,6 +474,23 @@ img, svg { vertical-align: middle; }
 @keyframes slideIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes spin    { to { transform: rotate(360deg); } }
 @keyframes ping    { 75%, 100% { transform: scale(2); opacity: 0; } }
+
+@media (max-width: 600px) {
+  .container { padding-left: var(--s4); padding-right: var(--s4); }
+  .page { padding-top: var(--s6); padding-bottom: var(--s6); }
+
+  .modal-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: var(--s3);
+  }
+  .modal-box {
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    margin: auto 0;
+    padding: var(--s5);
+  }
+}
 
 /* ─────────────────────────────────────────────────────────
    SCROLLBAR

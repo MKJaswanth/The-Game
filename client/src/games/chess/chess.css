@@ -464,5 +464,8 @@
 }
 
 @media (max-width: 420px) {
-  .chess-wrap { --sq: calc((100vw - 40px) / 8); }
+  .chess-wrap { --sq: calc((100vw - 48px) / 8); padding-inline: 0; }
+  .chess-seat { padding-inline: var(--s2); }
+  .chess-seat-name { max-width: 120px; }
+  .chess-history { max-height: 140px; }
 }

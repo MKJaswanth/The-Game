@@ -143,11 +143,19 @@
 }
 
 @media (max-width: 480px) {
+  .ttt-matchup-header { flex-wrap: wrap; justify-content: center; padding: var(--s3); }
+  .ttt-player-card { min-width: 0; flex: 1 1 120px; padding-inline: var(--s2); }
+  .ttt-player-info { min-width: 0; }
+  .ttt-player-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ttt-board-wrapper { padding: var(--s4); }
   .ttt-grid {
-    grid-template-columns: repeat(3, 84px);
-    grid-template-rows: repeat(3, 84px);
+    width: min(100%, 300px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
     gap: 8px;
+    aspect-ratio: 1;
   }
+  .ttt-cell { font-size: clamp(2rem, 12vw, 3rem); }
 }
 
 /* Individual board cells */

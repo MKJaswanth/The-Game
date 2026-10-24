@@ -597,4 +597,9 @@
   .ucp-swatch { width: 92px; height: 62px; }
   .uno-turn-banner { padding: 8px 14px; }
   .uno-turn-banner.is-mine .utb-text { font-size: var(--t-md); }
+  .uno-banner { max-width: 100%; padding-inline: var(--s3); }
+  .uno-final { margin-top: var(--s4); padding-inline: var(--s4); }
+  .uno-final-actions { width: 100%; flex-wrap: wrap; justify-content: center; }
+  .uno-final-actions .btn { flex: 1 1 130px; }
+  .uno-toast { left: var(--s3); right: var(--s3); transform: none; max-width: none; text-align: center; white-space: normal; }
 }

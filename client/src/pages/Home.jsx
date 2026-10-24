@@ -330,6 +330,24 @@ export default function Home() {
           }
           .home-title { font-size: clamp(2.2rem, 8vw, 3rem); }
         }
+
+        @media (max-width: 600px) {
+          .home-body { gap: var(--s6); padding-top: var(--s6); padding-bottom: var(--s6); }
+          .home-copy { gap: var(--s4); }
+          .home-desc { font-size: var(--t-sm); line-height: 1.55; }
+          .home-game { gap: var(--s2); align-items: center; }
+          .home-game-num { flex: 0 0 20px; }
+          .home-game-name { min-width: 0; flex: 1; font-size: var(--t-sm); }
+          .home-game-mode {
+            flex: 0 1 82px;
+            max-width: 82px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .home-game-tag { flex: 0 0 42px; }
+          .home-form { padding: var(--s5); }
+        }
       `}</style>
     </div>
   );
