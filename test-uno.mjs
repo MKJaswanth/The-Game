@@ -55,6 +55,7 @@ try {
   ok(sB && Array.isArray(sB.yourHand) && sB.yourHand.length === 7, 'Bob dealt 7 cards');
   ok(sA && sB && sA.yourHand !== sB.yourHand, 'hands are private per player');
   ok(sA?.players.length === 2, 'room has 2 seats');
+  ok(sA?.roundNumber === 1 && sA?.turnNumber === 1, 'new match starts at round 1, turn 1');
   ok(sA?.topCard && sA.topCard.type === 'number', `top card is a number (${sA.topCard.color} ${sA.topCard.value})`);
   ok(sA.isYourTurn !== sB.isYourTurn, 'exactly one player has the turn');
   ok(typeof sA.turnEndsAt === 'number' && sA.turnEndsAt > Date.now(), 'turn has a visible deadline');
@@ -68,6 +69,7 @@ try {
 
   // 5) Full game loop — event driven, state updated by uno:session listeners
   let unoCallVerified = 0;
+  let unoCatchVerified = 0;
   let guard = 0;
   while (guard++ < 500) {
     const s1 = state.Alice, s2 = state.Bob;
@@ -93,17 +95,32 @@ try {
         const who = sock.nick;
         const mine = state[who];
         ok(mine?.unoPending === who, 'playing down to one card opens the UNO window');
-        const called = await emit(sock, 'uno:call', { roomCode });
-        ok(called?.success, 'UNO can be called inside the window');
-        await wait(120);
-        const after = state[who];
-        const mySeat = after?.players?.find((p) => p.nickname === who);
-        ok(
-          after?.unoPending !== who,
-          `calling UNO removes my pending penalty (pending=${after?.unoPending}, cards=${mySeat?.handCount})`
-        );
-        ok(mySeat?.atUno === true, `the table sees the UNO badge (atUno=${mySeat?.atUno})`);
-        unoCallVerified += 1;
+        if (unoCatchVerified === 0) {
+          const catcher = sock === A ? B : A;
+          const caught = await emit(catcher, 'uno:catch', { roomCode, target: who });
+          ok(caught?.success, 'another player can catch a missed UNO call');
+          await wait(120);
+          const after = state[who];
+          const mySeat = after?.players?.find((p) => p.nickname === who);
+          ok(
+            after?.unoPending !== who,
+            `catching clears the pending UNO window (pending=${after?.unoPending})`
+          );
+          ok(mySeat?.handCount === 3, `missed UNO call adds the +2 penalty (${mySeat?.handCount} cards)`);
+          unoCatchVerified += 1;
+        } else {
+          const called = await emit(sock, 'uno:call', { roomCode });
+          ok(called?.success, 'UNO can be called inside the window');
+          await wait(120);
+          const after = state[who];
+          const mySeat = after?.players?.find((p) => p.nickname === who);
+          ok(
+            after?.unoPending !== who,
+            `calling UNO removes my pending penalty (pending=${after?.unoPending}, cards=${mySeat?.handCount})`
+          );
+          ok(mySeat?.atUno === true, `the table sees the UNO badge (atUno=${mySeat?.atUno})`);
+          unoCallVerified += 1;
+        }
       }
     } else {
       r = await emit(sock, 'uno:draw', { roomCode });
@@ -118,6 +135,9 @@ try {
   ok(finalWinner && ['Alice', 'Bob'].includes(finalWinner), `game ended with winner (${finalWinner})`);
   ok(endPayload && ['Alice', 'Bob'].includes(endPayload.winner), 'uno:end broadcast received');
   ok(endPayload?.standings?.length === 2, 'standings include both players');
+  ok(endPayload?.standings?.[0]?.rank === 1 && endPayload?.standings?.[0]?.isWinner, 'winner is ranked first');
+  ok(typeof endPayload?.standings?.[0]?.score === 'number', 'winner round score is included');
+  ok(unoCatchVerified > 0, `UNO catch penalty exercised (${unoCatchVerified}×)`);
   ok(unoCallVerified > 0, `UNO call window exercised (${unoCallVerified}×)`);
 
   // 6) Score persistence check
@@ -130,6 +150,7 @@ try {
   ok(rem?.success, 'rematch allowed after finish');
   await wait(600);
   ok(state.Alice && state.Alice.status === 'in_game' && (state.Alice.yourHand || []).length === 7, 'rematch dealt a fresh game');
+  ok(state.Alice?.roundNumber === 2 && state.Alice?.turnNumber === 1, 'rematch advances to round 2 at turn 1');
 } catch (err) {
   console.log('FATAL', err?.message || err);
   failures++;

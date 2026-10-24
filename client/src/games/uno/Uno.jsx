@@ -19,6 +19,15 @@ function cardLabel(card) {
   return SYMBOLS[card.type] || '?';
 }
 
+function actionTone(action = '') {
+  const text = action.toLowerCase();
+  if (text.includes('wins') || text.includes('rematch')) return 'is-win';
+  if (text.includes('uno')) return 'is-uno';
+  if (text.includes('draw') || text.includes('pending') || text.includes('absorbed')) return 'is-penalty';
+  if (text.includes('skip') || text.includes('reverse') || text.includes('wild')) return 'is-special';
+  return '';
+}
+
 function HandCard({ card, playable, dimmed, isTurn, onClick }) {
   return (
     <button
@@ -41,12 +50,30 @@ function HandCard({ card, playable, dimmed, isTurn, onClick }) {
   );
 }
 
+function RoundStatus({ view, isMyTurn = false, isFinal = false }) {
+  const round = view.roundNumber || 1;
+  const turn = view.turnNumber || 1;
+  const who = isMyTurn ? 'YOU' : (view.turnNickname || '—').toUpperCase();
+
+  return (
+    <div className={`uno-round-status ${isFinal ? 'is-final' : ''}`} aria-live="polite">
+      <span className="urs-round mono">ROUND <strong>{round}</strong></span>
+      <span className="urs-divider" aria-hidden="true">·</span>
+      <span className="urs-turn mono">TURN <strong>{turn}</strong></span>
+      <span className="urs-next">
+        {isFinal ? 'ROUND COMPLETE' : <>NOW PLAYING <strong>{who}</strong></>}
+      </span>
+    </div>
+  );
+}
+
 export default function Uno({ roomCode, onExit }) {
   const { nickname } = usePlayer();
   const [game, setGame] = useState(null);
   const [pubState, setPubState] = useState(null); // public state for spectators
   const [toast, setToast] = useState('');
   const [wildPick, setWildPick] = useState(null); // card object awaiting color
+  const [rematchBusy, setRematchBusy] = useState(false);
   const [tick, setTick] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const toastTimer = useRef(null);
@@ -198,33 +225,47 @@ export default function Uno({ roomCode, onExit }) {
   };
 
   const doRematch = () => {
+    if (rematchBusy) return;
+    setRematchBusy(true);
     socket.emit('uno:rematch', { roomCode }, (res) => {
-      if (res && !res.success) showToast(res.error || 'Could not restart.');
+      if (res && !res.success) {
+        setRematchBusy(false);
+        showToast(res.error || 'Could not restart.');
+      }
     });
   };
 
   /* ---------- Final screen ---------- */
   if (isFinal) {
     const winner = (view.standings || []).find((s) => s.isWinner) || { nickname: view.winner };
+    const winnerScore = winner.score ?? Math.max(
+      (view.standings || []).reduce((acc, s) => acc + (s.isWinner ? 0 : s.cardPoints || 0), 0),
+      1
+    );
     return (
       <div className="uno-wrap">
         <div className="uno-final">
+          <RoundStatus view={view} isFinal />
           <div className="uno-final-trophy">🏆</div>
           <h2 className="uno-final-title">
             {winner.nickname} wins{view.isForfeit ? ' by forfeit' : ''}!
           </h2>
+          <div className="uno-final-score">
+            <strong>+{winnerScore} points</strong> this round
+          </div>
 
           <div className="uno-standing-head mono">STANDINGS</div>
           <div className="uno-standings">
             {(view.standings || []).map((s, i) => (
               <div key={s.nickname} className={`uno-standing ${s.isWinner ? 'is-winner' : ''}`}>
-                <span className="us-rank mono">#{i + 1}</span>
+                <span className="us-rank mono">#{s.rank ?? i + 1}</span>
                 <Avatar nickname={s.nickname} size="sm" />
                 <span className="us-name">{s.nickname}</span>
                 {s.isWinner && <span className="us-crown">👑</span>}
                 <span className="us-cards mono">
-                  {s.isWinner ? `+${Math.max((view.standings || []).reduce(
-                    (acc, x) => acc + (x.isWinner ? 0 : x.cardPoints), 0), 1)} pts` : `${s.cardsRemaining} cards`}
+                  {s.isWinner
+                    ? `+${s.score ?? winnerScore} pts`
+                    : `${s.cardPoints ?? 0} pts left · ${s.cardsRemaining ?? 0} cards`}
                 </span>
               </div>
             ))}
@@ -232,8 +273,8 @@ export default function Uno({ roomCode, onExit }) {
 
           <div className="uno-final-actions">
             {!isSpectator && (
-              <button type="button" className="btn btn-primary" onClick={doRematch}>
-                Play Again
+              <button type="button" className="btn btn-primary" onClick={doRematch} disabled={rematchBusy}>
+                {rematchBusy ? 'Starting…' : 'Play Again'}
               </button>
             )}
             <button type="button" className="btn btn-ghost" onClick={onExit}>
@@ -250,6 +291,7 @@ export default function Uno({ roomCode, onExit }) {
   if (isSpectator) {
     return (
       <div className="uno-wrap uno-spectator">
+        <RoundStatus view={view} />
         <div className="uno-spec-badge mono">👁 SPECTATING</div>
 
         {/* Opponent rail */}
@@ -296,7 +338,7 @@ export default function Uno({ roomCode, onExit }) {
               </span>
             </div>
 
-            <div className={`uno-discard c-${view.topCard?.color}`}>
+            <div key={view.topCard?.id || 'empty-discard'} className={`uno-discard c-${view.topCard?.color}`}>
               <span className="uno-discard-face">{view.topCard ? cardLabel(view.topCard) : '?'}</span>
             </div>
             <div className="uno-currentcolor mono">
@@ -310,7 +352,11 @@ export default function Uno({ roomCode, onExit }) {
             </div>
           )}
 
-          {view.lastAction && <div className="uno-feed mono">{view.lastAction}</div>}
+          {view.lastAction && (
+            <div key={view.lastAction} className={`uno-feed mono ${actionTone(view.lastAction)}`}>
+              {view.lastAction}
+            </div>
+          )}
         </div>
 
         <div className="uno-spec-hand mono">
@@ -330,6 +376,7 @@ export default function Uno({ roomCode, onExit }) {
   /* ---------- In-game view (player) ---------- */
   return (
     <div className="uno-wrap">
+      <RoundStatus view={view} isMyTurn={isMyTurn} />
       {/* Turn banner — big, hard to miss */}
       <div className={`uno-turn-banner ${isMyTurn ? 'is-mine' : ''}`}>
         {isMyTurn ? (
@@ -389,7 +436,7 @@ export default function Uno({ roomCode, onExit }) {
             </span>
           </button>
 
-          <div className={`uno-discard c-${view.topCard?.color}`}>
+          <div key={view.topCard?.id || 'empty-discard'} className={`uno-discard c-${view.topCard?.color}`}>
             <span className="uno-discard-face">{view.topCard ? cardLabel(view.topCard) : '?'}</span>
           </div>
           <div className="uno-currentcolor mono">
@@ -422,7 +469,11 @@ export default function Uno({ roomCode, onExit }) {
           </div>
         )}
 
-        {view.lastAction && <div className="uno-feed mono">{view.lastAction}</div>}
+        {view.lastAction && (
+          <div key={view.lastAction} className={`uno-feed mono ${actionTone(view.lastAction)}`}>
+            {view.lastAction}
+          </div>
+        )}
 
         {view.unoPending && view.unoPending !== nickname && (
           <button type="button" className="uno-catch" onClick={() => doCatch(view.unoPending)}>

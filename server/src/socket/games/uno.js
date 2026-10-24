@@ -72,7 +72,7 @@ function safeEmit(io, tag, room, event, payload) {
 /**
  * Start a new UNO match (M11-02): shuffle, deal 7 cards, turn order
  */
-export function startUnoGame(io, roomCode) {
+export function startUnoGame(io, roomCode, { startMessage = null, roundNumber = 1 } = {}) {
   const code = roomCode.toUpperCase().trim();
   const room = getRoom(code);
   if (!room) return null;
@@ -105,6 +105,8 @@ export function startUnoGame(io, roomCode) {
     current: { color: top.color, type: top.type, value: top.value },
     direction: 1,
     turnIdx: 0,
+    roundNumber,
+    turnNumber: 1,
     status: 'in_game',
     winner: null,
     standings: [],
@@ -115,7 +117,7 @@ export function startUnoGame(io, roomCode) {
     turnDeadline: null,
     turnTimer: null,
     drawnCardId: null, // card drawn this turn that may still be played
-    lastAction: null, // human-readable feed line shown to the table
+    lastAction: startMessage, // human-readable feed line shown to the table
     isForfeit: false,
     forfeitedBy: null,
     isRematch: false
@@ -150,6 +152,7 @@ const mod = (n, m) => ((n % m) + m) % m;
  */
 function advanceTurn(game, steps = 1) {
   game.turnIdx = mod(game.turnIdx + steps * game.direction, game.players.length);
+  game.turnNumber += 1;
   game.drawnCardId = null;
 }
 
@@ -255,6 +258,8 @@ function publicState(game) {
     topCard: game.discard[game.discard.length - 1],
     currentColor: game.current.color,
     direction: game.direction,
+    roundNumber: game.roundNumber,
+    turnNumber: game.turnNumber,
     deckSize: game.deck.length,
     discardSize: game.discard.length,
     pendingDraw: game.pendingDraw,
@@ -358,12 +363,17 @@ async function finishGame(io, game, winnerNickname) {
   game.status = 'finished';
   game.winner = winnerNickname;
 
-  const standings = game.players.map((nick) => ({
-    nickname: nick,
-    cardsRemaining: (game.hands[nick] || []).length,
-    cardPoints: (game.hands[nick] || []).reduce((sum, c) => sum + cardPoints(c), 0),
-    isWinner: nick === winnerNickname
-  }));
+  const standings = game.players
+    .map((nick) => ({
+      nickname: nick,
+      cardsRemaining: (game.hands[nick] || []).length,
+      cardPoints: (game.hands[nick] || []).reduce((sum, c) => sum + cardPoints(c), 0),
+      isWinner: nick === winnerNickname
+    }))
+    .sort((a, b) => {
+      if (a.isWinner !== b.isWinner) return a.isWinner ? -1 : 1;
+      return a.cardPoints - b.cardPoints;
+    });
   game.standings = standings;
 
   const winner =
@@ -371,6 +381,13 @@ async function finishGame(io, game, winnerNickname) {
   const opponentsPoints = standings
     .filter((s) => s.nickname !== winner)
     .reduce((sum, s) => sum + s.cardPoints, 0);
+
+  for (const standing of standings) {
+    standing.score = standing.isWinner ? Math.max(opponentsPoints, 1) : 0;
+  }
+  standings.forEach((standing, index) => {
+    standing.rank = index + 1;
+  });
 
   console.log(
     `[UNO] Player ${winner} won in room ${game.roomCode}!(+${opponentsPoints} pts from opponents' hands)`
@@ -436,13 +453,9 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
   hand.splice(cardIdx, 1);
   game.discard.push(card);
 
-  const clearUnoTimer = () => {
-    if (game.unoTimer) clearTimeout(game.unoTimer);
-    game.unoTimer = null;
-    game.unoPending = null;
-    game.unoDeadline = null;
-  };
-  clearUnoTimer();
+  // A previous player may still be inside the 5s UNO window while this turn is
+  // being played. Do not clear that window here: the next player must still be
+  // able to catch the missed call until the deadline expires.
 
   if (card.type === 'number') {
     game.current = { color: card.color, type: 'number', value: card.value };
@@ -690,8 +703,12 @@ export function handleRematch(io, roomCode, nickname) {
     return { success: false, error: 'Need 2+ players in the room to rematch.' };
   }
 
+  const nextRound = (game.roundNumber || 1) + 1;
   stopUnoGame(code);
-  const state = startUnoGame(io, code);
+  const state = startUnoGame(io, code, {
+    startMessage: `${nickname} started a rematch — round ${nextRound} is live!`,
+    roundNumber: nextRound
+  });
   if (state) state.isRematch = true;
   console.log(`[UNO] Rematch triggered in room ${code} by ${nickname}`);
   return { success: true, restarted: !!state };

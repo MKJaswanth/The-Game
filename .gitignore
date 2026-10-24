@@ -25,6 +25,7 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+.kiro/
 *.suo
 *.ntvs*
 *.njsproj
