@@ -121,7 +121,7 @@ try {
   ok(unoCallVerified > 0, `UNO call window exercised (${unoCallVerified}×)`);
 
   // 6) Score persistence check
-  const scoreRes = await fetch('http://localhost:4000/api/players/Alice');
+  const scoreRes = await fetch(`${URL}/api/players/Alice`);
   const scoreJson = await scoreRes.json();
   ok(scoreJson?.player?.gamesPlayed >= 1, 'Alice score persisted via /api/players');
 

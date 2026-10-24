@@ -11,6 +11,42 @@
   animation: fadeUp 280ms var(--ease-spring) both;
 }
 
+/* ---------- turn banner (big, hard to miss) ---------- */
+.uno-turn-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: var(--t-sm);
+  color: var(--text-3);
+  transition: all 300ms var(--ease);
+  margin: 0 auto;
+  width: fit-content;
+}
+.uno-turn-banner .utb-text {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.uno-turn-banner.is-mine {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hi, #fbbf24));
+  border-color: var(--accent);
+  color: #16130c;
+  box-shadow: 0 0 24px rgba(245, 197, 24, 0.4);
+  animation: unoTurnPulse 1.5s ease-in-out infinite;
+}
+.uno-turn-banner.is-mine .utb-text {
+  font-weight: 900;
+  font-size: var(--t-lg);
+  letter-spacing: 0.12em;
+}
+@keyframes unoTurnPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(245, 197, 24, 0.4); }
+  50% { box-shadow: 0 0 36px rgba(245, 197, 24, 0.65); }
+}
+
 /* ---------- loading / waiting ---------- */
 .uno-loading {
   margin: var(--s10) auto;
@@ -21,6 +57,52 @@
 .uno-waiting {
   color: var(--text-3);
   letter-spacing: 0.14em;
+}
+
+/* ---------- spectator view ---------- */
+.uno-spectator {
+  opacity: 0.95;
+}
+.uno-spec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  width: fit-content;
+  margin: 0 auto;
+}
+.uno-spec-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  justify-content: center;
+  padding: var(--s3);
+  color: var(--text-3);
+  font-size: 12px;
+}
+.uno-spec-cardcount {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 4px 10px;
+}
+
+/* ---------- stacking banner ---------- */
+.uno-banner--stack {
+  border-left-color: #a855f7;
+  background: linear-gradient(135deg, var(--surface), rgba(168, 85, 247, 0.08));
+  font-weight: 600;
+}
+.uno-banner--stack strong {
+  color: #a855f7;
+  font-size: var(--t-md);
 }
 
 /* ---------- opponent rail ---------- */
@@ -513,4 +595,6 @@
   .uno-hand .uno-card { margin-left: -40px; }
   .uc-face { font-size: 21px; }
   .ucp-swatch { width: 92px; height: 62px; }
+  .uno-turn-banner { padding: 8px 14px; }
+  .uno-turn-banner.is-mine .utb-text { font-size: var(--t-md); }
 }

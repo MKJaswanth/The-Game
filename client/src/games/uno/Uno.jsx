@@ -44,9 +44,11 @@ function HandCard({ card, playable, dimmed, isTurn, onClick }) {
 export default function Uno({ roomCode, onExit }) {
   const { nickname } = usePlayer();
   const [game, setGame] = useState(null);
+  const [pubState, setPubState] = useState(null); // public state for spectators
   const [toast, setToast] = useState('');
   const [wildPick, setWildPick] = useState(null); // card object awaiting color
   const [tick, setTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const toastTimer = useRef(null);
   const lastActionRef = useRef('');
 
@@ -63,7 +65,10 @@ export default function Uno({ roomCode, onExit }) {
 
   useEffect(() => {
     const onSession = (s) => setGame(s);
+    const onState = (s) => setPubState(s); // public state — spectators use this
+
     socket.on('uno:session', onSession);
+    socket.on('uno:state', onState);
 
     const onEnd = () => {
       socket.emit('uno:get', { roomCode }, () => {});
@@ -75,24 +80,33 @@ export default function Uno({ roomCode, onExit }) {
       if (res && res.error) showToast(res.error);
     });
 
-    const poll = setInterval(() => setTick((t) => t + 1), 500);
+    const poll = setInterval(() => {
+      setTick((t) => t + 1);
+      setNow(Date.now());
+    }, 500);
 
     return () => {
       socket.off('uno:session', onSession);
+      socket.off('uno:state', onState);
       socket.off('uno:end', onEnd);
       clearInterval(poll);
     };
   }, [roomCode]);
 
   // Announce server-side table events (UNO calls, penalties, skips, timeouts).
-  const lastAction = game?.lastAction || '';
+  const lastAction = (game || pubState)?.lastAction || '';
   useEffect(() => {
     if (!lastAction || lastAction === lastActionRef.current) return;
     lastActionRef.current = lastAction;
     showToast(lastAction);
   }, [lastAction]);
 
-  if (!game) {
+  // --- Determine if spectator ---
+  // Spectators are players in the room who are NOT in the game's player list.
+  // They get `uno:state` (public) but never `uno:session` (private hand).
+  const view = game || pubState;
+
+  if (!view) {
     return (
       <div className="uno-wrap">
         <div className="uno-loading mono">SHUFFLING DECK…</div>
@@ -101,35 +115,44 @@ export default function Uno({ roomCode, onExit }) {
     );
   }
 
-  const me = game.players.find((p) => p.nickname === nickname);
-  const isSpectator = !me;
-  const yourHand = game.yourHand || [];
-  const playableIds = game.playableIds || [];
-  const isMyTurn = Boolean(game.isYourTurn);
-  const mustDraw = Boolean(game.mustDraw);
-  const unoWindowLeft = game.unoDeadline ? Math.max(0, Math.ceil((game.unoDeadline - Date.now()) / 1000)) : 0;
-  const isFinal = game.status === 'finished';
+  // Check if the current player is a participant
+  const playerSeat = view.players?.find((p) => p.nickname === nickname);
+  const isSpectator = !playerSeat && !game; // no session = not a player
+  const yourHand = game?.yourHand || [];
+  const playableIds = game?.playableIds || [];
+  const isMyTurn = Boolean(game?.isYourTurn);
+  const mustDraw = Boolean(game?.mustDraw);
+  const unoWindowLeft = view.unoDeadline ? Math.max(0, Math.ceil((view.unoDeadline - now) / 1000)) : 0;
+  const isFinal = view.status === 'finished';
 
   // Turn clock (server-authoritative deadline, re-rendered by the 500 ms tick).
-  const turnMs = game.turnMs || 25000;
-  const turnLeftMs = game.turnEndsAt ? Math.max(0, game.turnEndsAt - Date.now()) : 0;
+  const turnMs = view.turnMs || 25000;
+  const turnLeftMs = view.turnEndsAt ? Math.max(0, view.turnEndsAt - now) : 0;
   const turnLeft = Math.ceil(turnLeftMs / 1000);
   const turnPct = Math.max(0, Math.min(100, (turnLeftMs / turnMs) * 100));
   const turnUrgent = turnLeftMs > 0 && turnLeftMs <= 6000;
 
   // After drawing you may only play that card (or pass).
-  const drawnCardId = game.drawnCardId || null;
+  const drawnCardId = game?.drawnCardId || null;
   const allowedIds = drawnCardId ? [drawnCardId] : playableIds;
-  const noPlayableCards = isMyTurn && !mustDraw && playableIds.length === 0 && !drawnCardId;
+  const noPlayableCards = isMyTurn && !mustDraw && playableIds.length === 0 && !drawnCardId && !view.pendingDraw;
+
+  // Can the current player stack? (+2 or +4 when pendingDraw > 0)
+  const canStack = isMyTurn && view.pendingDraw > 0;
+  const stackableIds = canStack
+    ? yourHand.filter((c) => c.type === 'draw2' || c.type === 'wild4').map((c) => c.id)
+    : [];
 
   const doPlay = (card) => {
-    if (!allowedIds.includes(card.id)) {
+    if (!allowedIds.includes(card.id) && !stackableIds.includes(card.id)) {
       showToast(
         drawnCardId
           ? 'You drew this turn — play the drawn card or pass.'
           : mustDraw
-            ? `You must draw ${game.pendingDraw} first!`
-            : 'That card cannot be played right now.'
+            ? `You must draw ${view.pendingDraw} first!`
+            : canStack
+              ? `You can stack with a +2 or +4, or draw ${view.pendingDraw}.`
+              : 'That card cannot be played right now.'
       );
       return;
     }
@@ -180,27 +203,27 @@ export default function Uno({ roomCode, onExit }) {
     });
   };
 
-  /* ---------- Final screen (M11-13) ---------- */
+  /* ---------- Final screen ---------- */
   if (isFinal) {
-    const winner = (game.standings || []).find((s) => s.isWinner) || { nickname: game.winner };
+    const winner = (view.standings || []).find((s) => s.isWinner) || { nickname: view.winner };
     return (
       <div className="uno-wrap">
         <div className="uno-final">
           <div className="uno-final-trophy">🏆</div>
           <h2 className="uno-final-title">
-            {winner.nickname} wins{game.isForfeit ? ' by forfeit' : ''}!
+            {winner.nickname} wins{view.isForfeit ? ' by forfeit' : ''}!
           </h2>
 
           <div className="uno-standing-head mono">STANDINGS</div>
           <div className="uno-standings">
-            {(game.standings || []).map((s, i) => (
+            {(view.standings || []).map((s, i) => (
               <div key={s.nickname} className={`uno-standing ${s.isWinner ? 'is-winner' : ''}`}>
                 <span className="us-rank mono">#{i + 1}</span>
                 <Avatar nickname={s.nickname} size="sm" />
                 <span className="us-name">{s.nickname}</span>
                 {s.isWinner && <span className="us-crown">👑</span>}
                 <span className="us-cards mono">
-                  {s.isWinner ? `+${Math.max((game.standings || []).reduce(
+                  {s.isWinner ? `+${Math.max((view.standings || []).reduce(
                     (acc, x) => acc + (x.isWinner ? 0 : x.cardPoints), 0), 1)} pts` : `${s.cardsRemaining} cards`}
                 </span>
               </div>
@@ -208,9 +231,11 @@ export default function Uno({ roomCode, onExit }) {
           </div>
 
           <div className="uno-final-actions">
-            <button type="button" className="btn btn-primary" onClick={doRematch}>
-              Play Again
-            </button>
+            {!isSpectator && (
+              <button type="button" className="btn btn-primary" onClick={doRematch}>
+                Play Again
+              </button>
+            )}
             <button type="button" className="btn btn-ghost" onClick={onExit}>
               Back to Lobby
             </button>
@@ -221,12 +246,102 @@ export default function Uno({ roomCode, onExit }) {
     );
   }
 
-  /* ---------- In-game view ---------- */
+  /* ---------- Spectator view ---------- */
+  if (isSpectator) {
+    return (
+      <div className="uno-wrap uno-spectator">
+        <div className="uno-spec-badge mono">👁 SPECTATING</div>
+
+        {/* Opponent rail */}
+        <div className="uno-opp-rail">
+          {view.players?.map((p) => (
+            <div key={p.nickname} className={`uno-opp ${p.isTurn ? 'is-turn' : ''}`}>
+              <Avatar nickname={p.nickname} size="sm" />
+              <span className="uo-name">{p.nickname}</span>
+              {p.atUno && <span className="uo-uno mono">UNO</span>}
+              <span className="uo-count mono">{p.handCount}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Center pile */}
+        <div className="uno-center">
+          <div className="uno-dir mono">
+            {view.direction === 1 ? '⟳ CW' : '⟲ CCW'}
+            {' · deck '}{view.deckSize}
+            {view.pendingDraw > 0 && <span className="uno-pendwarn"> · +{view.pendingDraw} PENDING</span>}
+          </div>
+
+          {view.turnEndsAt && (
+            <div className={`uno-clock ${turnUrgent ? 'is-urgent' : ''}`}>
+              <div className="ucl-row">
+                <span className="ucl-who mono">
+                  {(view.turnNickname || '').toUpperCase()}’S TURN
+                </span>
+                <span className="ucl-time mono">{turnLeft}s</span>
+              </div>
+              <div className="ucl-track">
+                <span className="ucl-fill" style={{ width: `${turnPct}%` }} />
+              </div>
+            </div>
+          )}
+
+          <div className="uno-piles">
+            <div className="uno-drawpile">
+              <div className="uno-card-back">
+                <span>UNO</span>
+              </div>
+              <span className="uno-drawpile-label mono">
+                {view.pendingDraw > 0 ? `DRAW ${view.pendingDraw}` : 'DRAW'}
+              </span>
+            </div>
+
+            <div className={`uno-discard c-${view.topCard?.color}`}>
+              <span className="uno-discard-face">{view.topCard ? cardLabel(view.topCard) : '?'}</span>
+            </div>
+            <div className="uno-currentcolor mono">
+              COLOR: <span className={`cc cc-${view.currentColor}`}>{(view.currentColor || '').toUpperCase()}</span>
+            </div>
+          </div>
+
+          {view.pendingDraw > 0 && (
+            <div className="uno-banner uno-banner--stack">
+              ⚡ Draw stack: <strong>+{view.pendingDraw}</strong> — {view.turnNickname} must stack or draw!
+            </div>
+          )}
+
+          {view.lastAction && <div className="uno-feed mono">{view.lastAction}</div>}
+        </div>
+
+        <div className="uno-spec-hand mono">
+          {view.players?.map((p) => (
+            <span key={p.nickname} className="uno-spec-cardcount">
+              {p.nickname}: {p.handCount} 🂠
+            </span>
+          ))}
+        </div>
+
+        {toast && <div className="uno-toast">{toast}</div>}
+        <span className="uno-tick" data-tick={tick} hidden />
+      </div>
+    );
+  }
+
+  /* ---------- In-game view (player) ---------- */
   return (
     <div className="uno-wrap">
+      {/* Turn banner — big, hard to miss */}
+      <div className={`uno-turn-banner ${isMyTurn ? 'is-mine' : ''}`}>
+        {isMyTurn ? (
+          <span className="utb-text">🎯 YOUR TURN</span>
+        ) : (
+          <span className="utb-text">⏳ {view.turnNickname}'s turn</span>
+        )}
+      </div>
+
       {/* Opponent rail */}
       <div className="uno-opp-rail">
-        {game.players.map((p) => (
+        {view.players?.map((p) => (
           <div key={p.nickname} className={`uno-opp ${p.isTurn ? 'is-turn' : ''} ${p.nickname === nickname ? 'is-me' : ''}`}>
             <Avatar nickname={p.nickname} size="sm" />
             <span className="uo-name">{p.nickname}{p.nickname === nickname ? ' (you)' : ''}</span>
@@ -239,16 +354,16 @@ export default function Uno({ roomCode, onExit }) {
       {/* Center pile */}
       <div className="uno-center">
         <div className="uno-dir mono">
-          {game.direction === 1 ? '⟳ CW' : '⟲ CCW'}
-          {' · deck '}{game.deckSize}
-          {game.pendingDraw > 0 && <span className="uno-pendwarn"> · +{game.pendingDraw} PENDING</span>}
+          {view.direction === 1 ? '⟳ CW' : '⟲ CCW'}
+          {' · deck '}{view.deckSize}
+          {view.pendingDraw > 0 && <span className="uno-pendwarn"> · +{view.pendingDraw} PENDING</span>}
         </div>
 
-        {game.turnEndsAt && (
+        {view.turnEndsAt && (
           <div className={`uno-clock ${isMyTurn ? 'is-me' : ''} ${turnUrgent ? 'is-urgent' : ''}`}>
             <div className="ucl-row">
               <span className="ucl-who mono">
-                {isMyTurn ? 'YOUR TURN' : `${(game.turnNickname || '').toUpperCase()}’S TURN`}
+                {isMyTurn ? 'YOUR TURN' : `${(view.turnNickname || '').toUpperCase()}’S TURN`}
               </span>
               <span className="ucl-time mono">{turnLeft}s</span>
             </div>
@@ -263,32 +378,40 @@ export default function Uno({ roomCode, onExit }) {
             type="button"
             className={`uno-drawpile ${isMyTurn ? 'is-my-turn' : ''}`}
             onClick={doDraw}
-            disabled={!isMyTurn || isSpectator}
+            disabled={!isMyTurn}
             title="Draw a card"
           >
             <div className="uno-card-back">
               <span>UNO</span>
             </div>
-            <span className="uno-drawpile-label mono">{mustDraw ? `DRAW ${game.pendingDraw}` : 'DRAW'}</span>
+            <span className="uno-drawpile-label mono">
+              {mustDraw ? `DRAW ${view.pendingDraw}` : canStack ? `DRAW ${view.pendingDraw} or STACK` : 'DRAW'}
+            </span>
           </button>
 
-          <div className={`uno-discard c-${game.topCard.color}`}>
-            <span className="uno-discard-face">{cardLabel(game.topCard)}</span>
+          <div className={`uno-discard c-${view.topCard?.color}`}>
+            <span className="uno-discard-face">{view.topCard ? cardLabel(view.topCard) : '?'}</span>
           </div>
           <div className="uno-currentcolor mono">
-            COLOR: <span className={`cc cc-${game.currentColor}`}>{game.currentColor.toUpperCase()}</span>
+            COLOR: <span className={`cc cc-${view.currentColor}`}>{(view.currentColor || '').toUpperCase()}</span>
           </div>
         </div>
 
-        {mustDraw && (
+        {canStack && (
+          <div className="uno-banner uno-banner--stack">
+            ⚡ Draw stack: <strong>+{view.pendingDraw}</strong> pending — play a <strong>+2</strong> or <strong>+4</strong> to stack, or draw to absorb!
+          </div>
+        )}
+
+        {mustDraw && !canStack && (
           <div className="uno-banner">
-            ⚠️ You absorbed a draw stack — tap the deck to take {game.pendingDraw} and skip.
+            ⚠️ You absorbed a draw stack — tap the deck to take {view.pendingDraw} and skip.
           </div>
         )}
 
         {noPlayableCards && (
           <div className="uno-banner uno-banner--hint">
-            No card matches {game.currentColor} — tap the deck to pick one.
+            No card matches {view.currentColor} — tap the deck to pick one.
           </div>
         )}
 
@@ -299,14 +422,14 @@ export default function Uno({ roomCode, onExit }) {
           </div>
         )}
 
-        {game.lastAction && <div className="uno-feed mono">{game.lastAction}</div>}
+        {view.lastAction && <div className="uno-feed mono">{view.lastAction}</div>}
 
-        {game.unoPending && game.unoPending !== nickname && (
-          <button type="button" className="uno-catch" onClick={() => doCatch(game.unoPending)}>
-            Catch {game.unoPending}! (+2)
+        {view.unoPending && view.unoPending !== nickname && (
+          <button type="button" className="uno-catch" onClick={() => doCatch(view.unoPending)}>
+            Catch {view.unoPending}! (+2)
           </button>
         )}
-        {game.unoPending === nickname && (
+        {view.unoPending === nickname && (
           <button type="button" className="uno-call" onClick={doCallUno}>
             UNO! ({unoWindowLeft}s)
           </button>
@@ -316,19 +439,24 @@ export default function Uno({ roomCode, onExit }) {
       {/* My hand */}
       <div className={`uno-hand ${isMyTurn ? 'my-turn' : ''}`}>
         {yourHand.length === 0 && <div className="mono uno-waiting">WAITING…</div>}
-        {yourHand.map((card) => (
-          <HandCard
-            key={card.id}
-            card={card}
-            playable={isSpectator ? false : allowedIds.includes(card.id)}
-            dimmed={!isMyTurn || (Boolean(drawnCardId) && card.id !== drawnCardId)}
-            isTurn={isMyTurn}
-            onClick={() => doPlay(card)}
-          />
-        ))}
+        {yourHand.map((card) => {
+          // When stacking, +2 and +4 cards are highlighted as playable
+          const isStackable = canStack && (card.type === 'draw2' || card.type === 'wild4');
+          const isCardPlayable = isSpectator ? false : (allowedIds.includes(card.id) || isStackable);
+          return (
+            <HandCard
+              key={card.id}
+              card={card}
+              playable={isCardPlayable}
+              dimmed={!isMyTurn || (Boolean(drawnCardId) && card.id !== drawnCardId)}
+              isTurn={isMyTurn}
+              onClick={() => doPlay(card)}
+            />
+          );
+        })}
       </div>
 
-      {/* Wild color picker (M11-10) */}
+      {/* Wild color picker */}
       {wildPick && (
         <div className="uno-colorpick" role="dialog" aria-label="Choose a color">
           <div className="ucp-box">

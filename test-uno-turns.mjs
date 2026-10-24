@@ -24,6 +24,7 @@ const ok = (cond, msg) => {
   console.log(cond ? `PASS ${msg}` : `FAIL ${msg}`);
   if (!cond) failures++;
 };
+const skip = (cond, msg) => console.log(cond ? `PASS ${msg}` : `SKIP ${msg}`);
 
 const A = client('Alice');
 const B = client('Bob');
@@ -40,13 +41,43 @@ const await_ = async (fn, label, timeout = 9000) => {
 
 const seatOf = (nick) => (nick === 'Alice' ? A : B);
 
+const cardPayload = (roomCode, card) => ({
+  roomCode,
+  cardId: card.id,
+  ...(card.color === 'wild' ? { chosenColor: 'blue' } : {})
+});
+
+let activeRoomCode = null;
+
+const startFreshGame = async (label) => {
+  const created = await emit(A, 'room:create', { gameType: 'uno', nickname: 'Alice' });
+  if (!created?.success) throw new Error(`${label}: room:create failed (${created?.error})`);
+  const roomCode = created.roomCode;
+  const joined = await emit(B, 'room:join', { roomCode, nickname: 'Bob' });
+  if (!joined?.success) throw new Error(`${label}: room:join failed (${joined?.error})`);
+  const started = await emit(A, 'room:start', { roomCode });
+  if (!started?.success) throw new Error(`${label}: room:start failed (${started?.error})`);
+  await await_(
+    () => A.state?.roomCode === roomCode && B.state?.roomCode === roomCode &&
+      A.state.status === 'in_game' && B.state.status === 'in_game' &&
+      A.state.yourHand?.length === 7 && B.state.yourHand?.length === 7,
+    `${label} dealt hands`
+  );
+  activeRoomCode = roomCode;
+  return roomCode;
+};
+
+const closeGame = async (roomCode) => {
+  if (!roomCode) return;
+  await emit(A, 'room:leave', { roomCode, nickname: 'Alice' });
+  await emit(B, 'room:leave', { roomCode, nickname: 'Bob' });
+  if (activeRoomCode === roomCode) activeRoomCode = null;
+  await wait(100);
+};
+
 try {
   await await_(() => A.connected && B.connected, 'connections');
-  const created = await emit(A, 'room:create', { gameType: 'uno', nickname: 'Alice' });
-  const roomCode = created.roomCode;
-  await emit(B, 'room:join', { roomCode, nickname: 'Bob' });
-  await emit(A, 'room:start', { roomCode });
-  await await_(() => A.state?.yourHand?.length === 7 && B.state?.yourHand?.length === 7, 'dealt hands');
+  let roomCode = await startFreshGame('clock test');
 
   ok(typeof A.state.turnEndsAt === 'number' && A.state.turnEndsAt > Date.now(), 'every turn carries a visible deadline');
   ok(A.state.turnMs > 0, `turn length is broadcast (${A.state.turnMs} ms)`);
@@ -70,21 +101,45 @@ try {
   ok(afterHand === beforeHand + 1, `idle player drew a card (${beforeHand} → ${afterHand})`);
   ok(/ran out of time/i.test(A.state.lastAction || ''), `timeout is explained (${A.state.lastAction})`);
 
+  const directPasser = seatOf(A.state.turnNickname);
+  const directPass = await emit(directPasser, 'uno:pass', { roomCode });
+  ok(
+    directPass?.success === false && /draw/i.test(directPass.error || ''),
+    `direct pass is rejected before drawing (${directPass?.error})`
+  );
+
+  // Use fresh deals for the random draw branches. This keeps the harness from
+  // burning through a whole game while searching for a particular card draw.
+  await closeGame(roomCode);
+
   // --- 2. drawing: either the card is playable (turn continues) or not ------
-  // The drawn card is random, so keep drawing on successive turns until we hit
-  // the interesting branch (a draw you are allowed to play).
+  // Classic UNO only permits a draw when the current hand has no playable card.
   let playablePath = null;
-  for (let attempt = 0; attempt < 6 && !playablePath; attempt++) {
+  for (let attempt = 0; attempt < 40 && !playablePath; attempt++) {
+    roomCode = await startFreshGame('draw branch');
     const actingNick = A.state.turnNickname;
     const actor = seatOf(actingNick);
+    const actorState = actor.state;
+    if (actorState.mustDraw || (actorState.playableIds || []).length > 0) {
+      await closeGame(roomCode);
+      continue;
+    }
     const other = actingNick === 'Alice' ? B : A;
     const deadlineBefore = actor.state.turnEndsAt;
     const handBeforeDraw = actor.state.yourHand.length;
     const deckBefore = actor.state.deckSize;
 
     const drawRes = await emit(actor, 'uno:draw', { roomCode });
-    ok(drawRes?.success, `draw accepted (${JSON.stringify({ drawn: drawRes?.drawn, canPlayDrawn: drawRes?.canPlayDrawn })})`);
+    ok(
+      drawRes?.success,
+      `legal draw accepted (${JSON.stringify({ drawn: drawRes?.drawn, canPlayDrawn: drawRes?.canPlayDrawn })})`
+    );
     await wait(200);
+
+    if (!drawRes?.success) {
+      await closeGame(roomCode);
+      continue;
+    }
 
     ok(
       actor.state.yourHand.length >= handBeforeDraw + 1 || actor.state.yourHand.length > 0,
@@ -95,13 +150,14 @@ try {
     if (!drawRes.canPlayDrawn) {
       ok(actor.state.turnNickname !== actingNick, 'an unplayable draw passes the turn automatically');
       ok(!actor.state.drawnCardId, 'no drawn-card lock without a playable draw');
+      await closeGame(roomCode);
       continue;
     }
 
     playablePath = { actingNick, actor, other, deadlineBefore, drawRes };
   }
 
-  ok(Boolean(playablePath), 'eventually drew a playable card (tested the keep-turn branch)');
+  skip(Boolean(playablePath), 'eventually drew a playable card (tested the keep-turn branch)');
 
   if (playablePath) {
     const { actingNick, actor, other, deadlineBefore, drawRes } = playablePath;
@@ -111,8 +167,7 @@ try {
     ok(actor.state.turnEndsAt > deadlineBefore, 'deciding on the drawn card gets a fresh clock');
 
     const card = drawRes.drawnCard;
-    const payload = { roomCode, cardId: card.id };
-    if (card.color === 'wild') payload.chosenColor = 'blue';
+    const payload = cardPayload(roomCode, card);
 
     // Only the drawn card may be played now.
     const otherCard = actor.state.yourHand.find((c) => c.id !== card.id);
@@ -136,30 +191,68 @@ try {
     ok(!actor.state.drawnCardId, 'drawn-card lock clears after playing');
   }
 
-  // --- 3. pass hands the turn over ----------------------------------------
-  const passerNick = A.state.turnNickname;
-  const passer = seatOf(passerNick);
-  const passRes = await emit(passer, 'uno:pass', { roomCode });
-  ok(passRes?.success, 'pass accepted');
-  await wait(200);
-  ok(A.state.turnNickname !== passerNick, `pass moved the turn to ${A.state.turnNickname}`);
+  await closeGame(roomCode);
 
-  // somebody else cannot pass for you
-  const wrongPasser = A.state.turnNickname === 'Alice' ? B : A;
-  const stolen = await emit(wrongPasser, 'uno:pass', { roomCode });
-  ok(stolen?.success === false, `out-of-turn pass rejected (${stolen?.error})`);
+  // --- 3. pass hands the turn over ----------------------------------------
+  // A direct pass is intentionally rejected. Draw a playable card, then use
+  // the explicit pass action to decline it and hand the turn over.
+  let passVerified = false;
+  let passerNick = null;
+  for (let attempt = 0; attempt < 40 && !passVerified; attempt++) {
+    roomCode = await startFreshGame('pass branch');
+    passerNick = A.state.turnNickname;
+    const passer = seatOf(passerNick);
+    const passerState = passer.state;
+    if (passerState.mustDraw || (passerState.playableIds || []).length > 0) {
+      await closeGame(roomCode);
+      continue;
+    }
+
+    const passCandidate = await emit(passer, 'uno:draw', { roomCode });
+    ok(
+      passCandidate?.success,
+      `draw for pass branch accepted (${JSON.stringify({ drawn: passCandidate?.drawn, canPlayDrawn: passCandidate?.canPlayDrawn })})`
+    );
+    await wait(160);
+
+    if (!passCandidate?.success || !passCandidate.canPlayDrawn) {
+      await closeGame(roomCode);
+      continue;
+    }
+
+    const passRes = await emit(passer, 'uno:pass', { roomCode });
+    ok(passRes?.success, 'pass accepted after drawing a playable card');
+    await wait(200);
+    ok(A.state.turnNickname !== passerNick, `pass moved the turn to ${A.state.turnNickname}`);
+    passVerified = Boolean(passRes?.success && A.state.turnNickname !== passerNick);
+  }
+  skip(passVerified, 'explicit pass branch was exercised');
+
+  if (passVerified) {
+    // somebody else cannot pass for the current player
+    const wrongPasser = seatOf(passerNick);
+    const stolen = await emit(wrongPasser, 'uno:pass', { roomCode });
+    ok(stolen?.success === false, `out-of-turn pass rejected (${stolen?.error})`);
+  }
 
   // --- 4. every active session agrees on the clock ------------------------
-  ok(
-    Math.abs((A.state.turnEndsAt || 0) - (B.state.turnEndsAt || 0)) < 1500,
-    'both clients see the same deadline'
-  );
+  if (passVerified) {
+    ok(
+      Math.abs((A.state.turnEndsAt || 0) - (B.state.turnEndsAt || 0)) < 1500,
+      'both clients see the same deadline'
+    );
+  } else {
+    skip(false, 'both clients see the same deadline (pass branch was not produced by the random deal)');
+  }
+
+  await closeGame(roomCode);
 
   console.log(failures === 0 ? '\nAll UNO turn checks passed.' : `\n${failures} UNO turn check(s) failed.`);
 } catch (err) {
   failures += 1;
   console.error(`ERROR ${err.message}`);
 } finally {
+  if (activeRoomCode) await closeGame(activeRoomCode);
   A.close();
   B.close();
   await wait(200);

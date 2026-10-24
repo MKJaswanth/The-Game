@@ -118,8 +118,8 @@ export function startUnoGame(io, roomCode) {
     lastAction: null, // human-readable feed line shown to the table
     isForfeit: false,
     forfeitedBy: null,
-    rematchVotes: new Set(),
     isRematch: false
+    // removed rematchVotes — was dead code, any single player could rematch
   };
 
   activeUnoGames.set(code, gameState);
@@ -178,10 +178,24 @@ function startTurnClock(io, game, ms = TURN_MS) {
 
 /**
  * Draw for the player whose clock ran out, then hand the turn on.
+ * FIX: If the player already drew a playable card (drawnCardId set) and just
+ * didn't act, don't draw again — just pass the turn.
  */
 function resolveTurn(io, game, { timedOut = false } = {}) {
   const nickname = game.players[game.turnIdx];
   if (!nickname) return;
+
+  // Already drew a playable card and didn't act — just pass, no extra draw
+  if (game.drawnCardId) {
+    game.lastAction = timedOut
+      ? `${nickname} ran out of time and passed`
+      : `${nickname} passed`;
+    advanceTurn(game);
+    startTurnClock(io, game);
+    broadcastUnoState(io, game.roomCode);
+    return;
+  }
+
   const take = game.pendingDraw > 0 ? game.pendingDraw : 1;
   const drawn = drawCards(game, take);
   game.hands[nickname].push(...drawn);
@@ -224,7 +238,7 @@ function drawCards(game, count) {
 }
 
 /**
- * Public state shared with everyone in the room
+ * Public state shared with everyone in the room (including spectators)
  */
 function publicState(game) {
   return {
@@ -251,13 +265,14 @@ function publicState(game) {
     turnNickname: game.players[game.turnIdx] || null,
     lastAction: game.lastAction,
     isForfeit: Boolean(game.isForfeit),
-    forfeitedBy: game.forfeitedBy,
-    rematchVotes: Array.from(game.rematchVotes)
+    forfeitedBy: game.forfeitedBy
+    // removed rematchVotes — was dead code
   };
 }
 
 /**
- * Broadcast personalized state to every seat (hands are private)
+ * Broadcast personalized state to every seat (hands are private).
+ * Also broadcasts public state to everyone (spectators use this).
  */
 export function broadcastUnoState(io, roomCode) {
   const game = activeUnoGames.get(roomCode?.toUpperCase()?.trim());
@@ -266,6 +281,7 @@ export function broadcastUnoState(io, roomCode) {
   const room = getRoom(game.roomCode);
   const base = publicState(game);
 
+  // Public state to the whole room (spectators rely on this)
   safeEmit(io, 'room-wide', io.to(game.roomCode), 'uno:state', base);
 
   if (room) {
@@ -276,10 +292,11 @@ export function broadcastUnoState(io, roomCode) {
       const session = {
         ...base,
         yourHand: hand,
-        playableIds: mustDraw ? [] : hand.filter((c) => isPlayable(game, c)).map((c) => c.id),
+        playableIds: mustDraw ? [] : hand.filter((c) => isPlayable(game, c, hand)).map((c) => c.id),
         isYourTurn,
         mustDraw,
-        drawnCardId: isYourTurn ? game.drawnCardId : null
+        drawnCardId: isYourTurn ? game.drawnCardId : null,
+        isSpectator: false
       };
       safeEmit(io, p.nickname, io.to(p.socketId), 'uno:session', session);
     }
@@ -288,15 +305,42 @@ export function broadcastUnoState(io, roomCode) {
 
 /**
  * M11-03: Is a card legally playable against the current pile?
+ * REWRITTEN to support:
+ *   - Draw stacking (+2/+4 on a pending draw)
+ *   - Wild +4 restriction (can only play if no card matches current color)
+ *
+ * @param {object} game - game state
+ * @param {object} card - card to check
+ * @param {Array}  hand  - the player's hand (for Wild +4 restriction)
  */
-export function isPlayable(game, card) {
+export function isPlayable(game, card, hand) {
+  // Stacking: when there's a pending draw, only +2 or +4 can be played.
+  // During stacking, Wild +4 bypasses the color restriction so the chain
+  // can continue.
+  if (game.pendingDraw > 0) {
+    return card.type === 'draw2' || card.type === 'wild4';
+  }
+
+  // Wild +4: can only play if you don't have a card matching the current color
+  if (card.type === 'wild4') {
+    if (hand && hand.some((c) => c.color === game.current.color)) return false;
+    return true;
+  }
+
+  // Wild (non-+4): always playable
   if (card.color === 'wild') return true;
+
+  // Color match
   if (card.color === game.current.color) return true;
-  // Match by symbol/type (e.g. any Skip on a Skip); Wild sets a color via chosenColor
+
+  // Type match (e.g. any Skip on a Skip)
   if (card.type !== 'number' && card.type === game.current.type) return true;
+
+  // Value match (7 on 7)
   if (card.type === 'number' && game.current.type === 'number' && card.value === game.current.value) {
     return true;
   }
+
   return false;
 }
 
@@ -353,7 +397,8 @@ async function finishGame(io, game, winnerNickname) {
 }
 
 /**
- * M11-03/04: Validate and apply a card play
+ * M11-03/04: Validate and apply a card play.
+ * UPDATED: removes pendingDraw block (stacking allowed), uses += for stacking math.
  */
 export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
   const game = activeUnoGames.get(roomCode?.toUpperCase()?.trim());
@@ -365,16 +410,14 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
   if (game.turnIdx !== seat) {
     return { success: false, error: `It's ${game.players[game.turnIdx]}'s turn!` };
   }
-  if (game.pendingDraw > 0) {
-    return { success: false, error: `You must draw ${game.pendingDraw} card${game.pendingDraw > 1 ? 's' : ''} first!` };
-  }
+  // REMOVED: pendingDraw > 0 block — stacking is now allowed
 
   const hand = game.hands[nickname];
   const cardIdx = hand.findIndex((c) => c.id === cardId);
   if (cardIdx === -1) return { success: false, error: 'Card not in your hand.' };
 
   const card = hand[cardIdx];
-  if (!isPlayable(game, card)) {
+  if (!isPlayable(game, card, hand)) {
     return { success: false, error: 'That card cannot be played right now.' };
   }
 
@@ -408,10 +451,11 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
   } else if (card.color === 'wild') {
     game.current = { color: chosenColor, type: 'wild', value: null };
     if (card.type === 'wild4') {
-      game.pendingDraw = 4;
-      game.lastAction = `${nickname} played Wild +4 — pick a colour: ${chosenColor}`;
+      // STACKING: add to existing pending (0 + 4 = 4, or 2 + 4 = 6, etc.)
+      game.pendingDraw += 4;
+      game.lastAction = `${nickname} played Wild +4 → ${chosenColor} (+${game.pendingDraw} pending)`;
     } else {
-      game.lastAction = `${nickname} played Wild — colour is ${chosenColor}`;
+      game.lastAction = `${nickname} played Wild → colour ${chosenColor}`;
     }
     advanceTurn(game, 1);
   } else if (card.type === 'skip') {
@@ -430,8 +474,9 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
     advanceTurn(game, game.players.length === 2 ? 2 : 1);
   } else if (card.type === 'draw2') {
     game.current = { color: card.color, type: 'draw2', value: null };
-    game.pendingDraw = 2;
-    game.lastAction = `${nickname} played +2 — the next seat must draw 2`;
+    // STACKING: add to existing pending (0 + 2 = 2, or 4 + 2 = 6, etc.)
+    game.pendingDraw += 2;
+    game.lastAction = `${nickname} played +2 (+${game.pendingDraw} pending)`;
     advanceTurn(game, 1);
   }
 
@@ -462,8 +507,6 @@ export async function playCard(io, roomCode, nickname, cardId, chosenColor) {
   startTurnClock(io, game);
   broadcastUnoState(io, roomCode);
   // NOTE: never return the raw internal game state — it contains a Node Timeout
-  // (game.unoTimer) whose _idlePrev/_idleNext form a circular list that socket.io
-  // cannot serialize (M11 bugfix).
   return { success: true };
 }
 
@@ -482,8 +525,10 @@ function penalizePlayer(io, game, nickname, count) {
 }
 
 /**
- * M11-09: draw action. If pendingDraw > 0 → draw the stack and skip turn.
- * Otherwise draw one card and pass the turn (house rule keeps flow simple).
+ * M11-09: draw action.
+ * FIX: Classic UNO — can only draw when you have no playable cards.
+ *       If pendingDraw > 0 → draw the stack and skip turn (absorb).
+ *       Otherwise draw one card; if playable, turn continues; else pass.
  */
 export function handleDraw(io, roomCode, nickname) {
   const game = activeUnoGames.get(roomCode?.toUpperCase()?.trim());
@@ -498,7 +543,16 @@ export function handleDraw(io, roomCode, nickname) {
 
   const wasPending = game.pendingDraw > 0;
   if (!wasPending && game.drawnCardId) {
-    return { success: false, error: 'You already drew this turn — play the card or pass.' };
+    return { success: false, error: 'You already drew this turn — play the drawn card or pass.' };
+  }
+
+  // Classic UNO: can only draw if you have no playable cards
+  if (!wasPending && !game.drawnCardId) {
+    const hand = game.hands[nickname];
+    const hasPlayable = hand.some((c) => isPlayable(game, c, hand));
+    if (hasPlayable) {
+      return { success: false, error: 'You have playable cards — play one!' };
+    }
   }
 
   const take = wasPending ? game.pendingDraw : 1;
@@ -511,7 +565,7 @@ export function handleDraw(io, roomCode, nickname) {
   // Classic rule: the card you draw is yours to play if it matches. Otherwise the
   // turn is over and the seat behind you is up.
   const drawnCard = wasPending ? null : drawn[0];
-  const canPlayDrawn = Boolean(drawnCard && isPlayable(game, drawnCard));
+  const canPlayDrawn = Boolean(drawnCard && isPlayable(game, drawnCard, game.hands[nickname]));
 
   if (wasPending) {
     game.lastAction = `${nickname} absorbed the draw stack (+${drawn.length}) and lost the turn`;
@@ -535,6 +589,7 @@ export function handleDraw(io, roomCode, nickname) {
 
 /**
  * Give up the turn (used after drawing a card you do not want to play).
+ * FIX: Can only pass AFTER drawing — drawnCardId must be set.
  */
 export function handlePass(io, roomCode, nickname) {
   const game = activeUnoGames.get(roomCode?.toUpperCase()?.trim());
@@ -545,6 +600,11 @@ export function handlePass(io, roomCode, nickname) {
   if (seat === -1) return { success: false, error: 'You are not in this game.' };
   if (game.turnIdx !== seat) {
     return { success: false, error: `It's ${game.players[game.turnIdx]}'s turn!` };
+  }
+
+  // Can only pass after drawing a card
+  if (!game.drawnCardId) {
+    return { success: false, error: 'Draw a card first — you can only pass after drawing.' };
   }
 
   game.lastAction = `${nickname} passed`;
@@ -639,6 +699,8 @@ export function handleRematch(io, roomCode, nickname) {
 
 /**
  * Handle a player leaving mid-game: remove their seat; last one standing wins.
+ * FIX: direction-aware turn pointer — when the current player leaves, the next
+ * turn goes to the correct seat based on game.direction.
  */
 export function handleUnoPlayerLeave(io, roomCode, nickname) {
   const game = activeUnoGames.get(roomCode?.toUpperCase()?.trim());
@@ -647,12 +709,24 @@ export function handleUnoPlayerLeave(io, roomCode, nickname) {
   const seat = game.players.indexOf(nickname);
   if (seat === -1) return;
 
+  const wasCurrentTurn = game.turnIdx === seat;
+
   delete game.hands[nickname];
   game.players.splice(seat, 1);
 
-  // Fix turn pointer to point at the same seat index after removal
   if (game.players.length > 0) {
-    game.turnIdx = mod(game.turnIdx > seat ? game.turnIdx - 1 : game.turnIdx, game.players.length);
+    if (wasCurrentTurn) {
+      // The current player left — point to the next player in current direction.
+      // direction +1: the next player shifted into this seat index.
+      // direction -1: the previous player is at (seat - 1) in the new array.
+      game.turnIdx = mod(
+        game.direction === -1 ? seat - 1 : seat,
+        game.players.length
+      );
+    } else {
+      // A non-current player left — fix the index shift
+      game.turnIdx = mod(game.turnIdx > seat ? game.turnIdx - 1 : game.turnIdx, game.players.length);
+    }
   }
 
   if (game.players.length === 1 && game.status === 'in_game') {
@@ -713,7 +787,7 @@ export function registerUnoHandlers(io, socket) {
     if (typeof callback === 'function') callback(result);
   });
 
-  // Pass the turn after drawing (or when stuck)
+  // Pass the turn after drawing
   socket.on('uno:pass', ({ roomCode }, callback) => {
     const room = getRoom(roomCode);
     const me = room?.players.find((p) => p.socketId === socket.id);
