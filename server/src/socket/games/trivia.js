@@ -201,10 +201,13 @@ function endTriviaGame(io, roomCode) {
     finalScores: { ...game.scores }
   });
 
-  // Submit all player scores to database/in-memory store
+  // Submit all player scores to database/in-memory store. The top score is a
+  // win (a tie counts for everyone who tied), so profiles and the leaderboard
+  // can tell a quiz victory from a loss.
+  const topScore = rankings[0]?.score || 0;
   for (const { nickname, score } of rankings) {
     if (score > 0) {
-      recordScore(nickname, 'trivia', score).catch((err) => {
+      recordScore(nickname, 'trivia', score, topScore > 0 && score === topScore).catch((err) => {
         console.error(`[Trivia] Error recording score for ${nickname}:`, err);
       });
     }

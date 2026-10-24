@@ -49,6 +49,18 @@ const emit = (socket, event, payload, timeout = 8000) =>
     });
   });
 
+// Profiles read the persisted score row, so they are the end-to-end check that
+// a finished match was recorded (and that the winner is not marked as a loss).
+async function profile(nickname) {
+  try {
+    const res = await fetch(`${SERVER}/api/players/${encodeURIComponent(nickname)}`);
+    const data = await res.json();
+    return data?.player || null;
+  } catch {
+    return null;
+  }
+}
+
 let failures = 0;
 const ok = (cond, msg) => {
   console.log(cond ? `PASS ${msg}` : `FAIL ${msg}`);
@@ -192,6 +204,11 @@ async function runTrivia({ solo }) {
   }
   ok(typeof end?.finalScores?.QuizHost === 'number', 'final scores included');
 
+  await wait(700);
+  const hostProfile = await profile('QuizHost');
+  ok(hostProfile?.gamesPlayed >= 1, 'trivia result reached the profile store');
+  ok(hostProfile?.totalWins >= 1, 'the trivia winner is recorded as a win, not a loss');
+
   await emit(A, 'room:leave', { roomCode, nickname: 'QuizHost' });
   if (B) await emit(B, 'room:leave', { roomCode, nickname: 'QuizGuest' });
   A.disconnect();
@@ -283,6 +300,11 @@ async function runScramble() {
   ok(end?.winner?.nickname === 'WordHost', `solo player wins (${end?.winner?.score} pts)`);
   ok(solved === rounds, `every round was solvable (${solved}/${rounds})`);
   ok((lastScores?.WordHost || 0) > 0, 'scores accumulated across rounds');
+
+  await wait(700);
+  const hostProfile = await profile('WordHost');
+  ok(hostProfile?.gamesPlayed >= 1, 'scramble result reached the profile store');
+  ok(hostProfile?.totalWins >= 1, 'the scramble winner is recorded as a win, not a loss');
 
   await emit(A, 'room:leave', { roomCode, nickname: 'WordHost' });
   A.disconnect();

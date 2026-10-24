@@ -257,10 +257,12 @@ function endGame(io, roomCode) {
     finalScores: { ...game.scores }
   });
 
-  // Submit all scores to database/in-memory store
+  // Submit all scores to database/in-memory store, marking the top score as a
+  // win (ties all count) so profiles can show a scramble victory.
+  const topScore = rankings[0]?.score || 0;
   for (const { nickname, score } of rankings) {
     if (score > 0) {
-      recordScore(nickname, 'wordscramble', score).catch((err) => {
+      recordScore(nickname, 'wordscramble', score, topScore > 0 && score === topScore).catch((err) => {
         console.error(`[WordScramble] Error recording score for ${nickname}:`, err);
       });
     }

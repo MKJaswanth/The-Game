@@ -121,7 +121,15 @@ try {
     const playAgain = await emit(actor, 'uno:play', payload);
     ok(playAgain?.success, `the drawn card can be played immediately (${card.color} ${card.type})`);
     await wait(200);
-    ok(actor.state.turnNickname !== actingNick, 'playing it finally passes the turn');
+    // A plain card hands the turn over. An action card (skip, reverse, +2, +4)
+    // resolves against the only other seat, so with two players the turn can
+    // legitimately come straight back to the player who played it.
+    const isActionCard = card.type !== 'number';
+    ok(
+      isActionCard || actor.state.turnNickname !== actingNick,
+      `playing a ${card.type} card resolves the turn (now ${actor.state.turnNickname})`
+    );
+    ok(!actor.state.yourHand.some((c) => c.id === card.id), 'the played card left the hand');
     ok(!actor.state.drawnCardId, 'drawn-card lock clears after playing');
   }
 
