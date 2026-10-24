@@ -112,7 +112,10 @@ export function startFlappyGame(io, roomCode) {
   const players = room.players.map((p) => p.nickname);
   if (players.length === 0) return null;
 
-  stopFlappyGame(code, io);
+  // Tear the previous race down silently. Passing `io` here broadcasts
+  // `flappy:closed`, which the client reads as "the room is gone" — a rematch
+  // would bounce every racer back to the hub instead of restarting the course.
+  stopFlappyGame(code);
 
   const gapH = pipeGap(0);
   const birds = {};

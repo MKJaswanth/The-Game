@@ -24,6 +24,14 @@ function client(nick) {
 const emit = (socket, ev, payload) =>
   new Promise((resolve) => socket.emit(ev, payload, (res) => resolve(res)));
 
+/** Resolve with the next payload for an event, or null once the timeout passes. */
+const waitFor = (socket, ev, ms) =>
+  new Promise((resolve) => {
+    const timer = setTimeout(() => { socket.off(ev, onEvent); resolve(null); }, ms);
+    const onEvent = (payload) => { clearTimeout(timer); resolve(payload); };
+    socket.once(ev, onEvent);
+  });
+
 const A = client('Flyer');
 const B = client('Dropper');
 
@@ -188,6 +196,23 @@ try {
     solo.emit('flappy:get', { roomCode: soloCreated.roomCode }, () => {});
   });
   ok(soloState?.birds?.length === 1, 'solo race has a single bird');
+
+  // A solo rematch must restart the course in the same room. It used to tear the
+  // old race down with a `flappy:closed` broadcast, which the client reads as
+  // "the room is gone" — every racer got bounced back to the hub on Race Again.
+  let closedDuringRematch = false;
+  solo.once('flappy:closed', () => { closedDuringRematch = true; });
+  const soloEnd = await waitFor(solo, 'flappy:end', 20000);
+  ok(Boolean(soloEnd), 'solo race ends when the bird crashes');
+
+  const rematchState = waitFor(solo, 'flappy:state', 8000);
+  const rematched = await emit(solo, 'flappy:rematch', { roomCode: soloCreated.roomCode });
+  ok(rematched?.success === true && rematched?.restarted === true, `solo rematch restarts the race (${JSON.stringify(rematched)})`);
+  await wait(600);
+  ok(closedDuringRematch === false, 'restart does not broadcast a room-closed event');
+  const afterRematch = await rematchState;
+  ok(afterRematch?.status === 'countdown' || afterRematch?.status === 'racing', `a fresh race is on the wire (${afterRematch?.status})`);
+
   solo.disconnect();
 } catch (err) {
   failures++;
