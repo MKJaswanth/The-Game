@@ -159,6 +159,7 @@ Draw  Ludo  Sound  PWA  Final QA
 | M2-16 | "Leave Room" — emit `room:leave`, return to hub | US-009 | ✅ |
 | M2-17 | Server: reassign host on leave, broadcast updated state | US-009 | ✅ |
 | M2-18 | Coming-soon game cards shown as disabled with badge | US-004 | ✅ |
+| M2-19 | Live open-room browser with one-click join from the Game Hub | US-005, US-006A | ✅ |
 
 ### ✅ Definition of Done
 - [x] All available games shown as styled cards in hub

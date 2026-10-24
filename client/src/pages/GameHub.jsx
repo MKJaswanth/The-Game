@@ -25,11 +25,38 @@ export default function GameHub() {
   const [isProcessing, setIsProcessing]             = useState(false);
   const [directCode, setDirectCode]                 = useState('');
   const [directCodeError, setDirectCodeError]       = useState('');
+  const [openRooms, setOpenRooms]                   = useState([]);
+  const [openRoomError, setOpenRoomError]           = useState('');
+  const [joiningRoomCode, setJoiningRoomCode]       = useState('');
 
   useEffect(() => {
     const stored = localStorage.getItem('player_nickname');
     if (!nickname && !stored) navigate('/', { replace: true });
   }, [nickname, navigate]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+
+    const handleRoomsUpdate = (data) => {
+      const rooms = Array.isArray(data) ? data : data?.rooms;
+      if (Array.isArray(rooms)) setOpenRooms(rooms);
+    };
+
+    const requestRooms = () => {
+      socket.emit('rooms:get', (res) => {
+        if (res?.success && Array.isArray(res.rooms)) setOpenRooms(res.rooms);
+      });
+    };
+
+    socket.on('rooms:update', handleRoomsUpdate);
+    if (socket.connected) requestRooms();
+    else socket.once('connect', requestRooms);
+
+    return () => {
+      socket.off('rooms:update', handleRoomsUpdate);
+      socket.off('connect', requestRooms);
+    };
+  }, [socket]);
 
   const currentNick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : null);
   if (!currentNick) return null;
@@ -62,6 +89,22 @@ export default function GameHub() {
       setIsProcessing(false);
       if (res?.success) { setSelectedGame(null); navigate(`/room/${c}`); }
       else setRoomError(res?.error || 'Room not found');
+    });
+  };
+
+  const joinOpenRoom = (room) => {
+    const code = room?.code?.trim().toUpperCase();
+    if (!code || !socket?.connected) {
+      setOpenRoomError('Not connected. Try again in a moment.');
+      return;
+    }
+
+    setJoiningRoomCode(code);
+    setOpenRoomError('');
+    socket.emit('room:join', { roomCode: code, nickname: currentNick }, (res) => {
+      setJoiningRoomCode('');
+      if (res?.success) navigate(`/room/${code}`);
+      else setOpenRoomError(res?.error || 'That room is no longer available.');
     });
   };
 
@@ -142,6 +185,62 @@ export default function GameHub() {
               )}
             </div>
           </div>
+
+          {/* Open rooms */}
+          <section className="hub-open-rooms" aria-labelledby="open-rooms-title">
+            <div className="hub-section-head">
+              <div>
+                <div className="hub-section-kicker">OPEN ROOMS</div>
+                <h2 id="open-rooms-title" className="hub-section-title">Jump into a live lobby</h2>
+                <p className="hub-section-desc">Join a waiting room instantly — no code needed.</p>
+              </div>
+              <span className="hub-room-count">{openRooms.length} {openRooms.length === 1 ? 'room' : 'rooms'}</span>
+            </div>
+
+            {openRoomError && <div className="hub-open-room-error" role="status">{openRoomError}</div>}
+
+            {openRooms.length > 0 ? (
+              <div className="hub-open-room-grid">
+                {openRooms.map((room) => {
+                  const game = GAMES_CATALOG.find((g) => g.id === room.gameType);
+                  const isJoining = joiningRoomCode === room.code;
+                  return (
+                    <div className="hub-open-room" key={room.code}>
+                      <div className="hub-open-room-main">
+                        <div className="hub-open-room-title-row">
+                          <h3 className="hub-open-room-title">{game?.title || room.gameType}</h3>
+                          <span className="hub-open-room-status"><span className="dot-live" /> WAITING</span>
+                        </div>
+                        <div className="hub-open-room-meta">
+                          <span>Hosted by <strong>{room.hostNickname}</strong></span>
+                          <span className="hub-open-room-code">{room.code}</span>
+                        </div>
+                      </div>
+                      <div className="hub-open-room-action">
+                        <span className="hub-open-room-slots">{room.currentPlayers}/{room.maxPlayers} players</span>
+                        <button
+                          type="button"
+                          className="btn btn-primary hub-open-room-btn"
+                          disabled={Boolean(joiningRoomCode)}
+                          onClick={() => joinOpenRoom(room)}
+                        >
+                          {isJoining ? <><span className="spinner" /> Joining...</> : 'Join now'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="hub-open-room-empty">
+                <span className="hub-open-room-empty-mark">+</span>
+                <div>
+                  <strong>No open rooms yet</strong>
+                  <p>Create a multiplayer room below and it will appear here for everyone.</p>
+                </div>
+              </div>
+            )}
+          </section>
 
           {/* Filter */}
           <div className="hub-filter-row">
@@ -442,6 +541,163 @@ export default function GameHub() {
           border-radius: var(--r-pill);
         }
 
+        /* Open room browser */
+        .hub-open-rooms {
+          padding: var(--s5);
+          margin-bottom: var(--s7);
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--r-xl);
+        }
+        .hub-section-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: var(--s4);
+          margin-bottom: var(--s4);
+        }
+        .hub-section-kicker {
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          color: var(--accent-hi);
+        }
+        .hub-section-title {
+          margin-top: 3px;
+          font-size: var(--t-xl);
+          font-weight: 800;
+          color: var(--text);
+        }
+        .hub-section-desc {
+          margin-top: 2px;
+          font-size: var(--t-sm);
+          color: var(--text-2);
+        }
+        .hub-room-count {
+          flex-shrink: 0;
+          padding: 5px 10px;
+          border: 1px solid var(--border-2);
+          border-radius: var(--r-pill);
+          color: var(--text-2);
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+        .hub-open-room-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: var(--s3);
+        }
+        .hub-open-room {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--s4);
+          min-width: 0;
+          padding: var(--s4);
+          background: var(--bg-2);
+          border: 1px solid var(--border-2);
+          border-radius: var(--r-lg);
+          transition: border-color var(--ease), background var(--ease);
+        }
+        .hub-open-room:hover {
+          background: var(--surface-2);
+          border-color: var(--border-3);
+        }
+        .hub-open-room-main { min-width: 0; }
+        .hub-open-room-title-row {
+          display: flex;
+          align-items: center;
+          gap: var(--s2);
+          min-width: 0;
+        }
+        .hub-open-room-title {
+          overflow: hidden;
+          color: var(--text);
+          font-size: var(--t-base);
+          font-weight: 800;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .hub-open-room-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          flex-shrink: 0;
+          color: var(--green);
+          font-family: var(--mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+        }
+        .hub-open-room-status .dot-live { width: 6px; height: 6px; }
+        .hub-open-room-meta {
+          display: flex;
+          align-items: center;
+          gap: var(--s3);
+          margin-top: 4px;
+          color: var(--text-2);
+          font-size: var(--t-xs);
+        }
+        .hub-open-room-meta strong { color: var(--text); font-weight: 700; }
+        .hub-open-room-code {
+          color: var(--accent-hi);
+          font-family: var(--mono);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+        }
+        .hub-open-room-action {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: var(--s2);
+          flex-shrink: 0;
+        }
+        .hub-open-room-slots {
+          color: var(--text-3);
+          font-family: var(--mono);
+          font-size: 10px;
+          white-space: nowrap;
+        }
+        .hub-open-room-btn { padding: 7px 12px; font-size: var(--t-xs); }
+        .hub-open-room-btn .spinner { width: 12px; height: 12px; border-width: 2px; }
+        .hub-open-room-error {
+          margin-bottom: var(--s3);
+          padding: var(--s3) var(--s4);
+          background: var(--red-dim);
+          border: 1px solid rgba(208,104,97,0.35);
+          border-radius: var(--r-md);
+          color: var(--red);
+          font-size: var(--t-sm);
+        }
+        .hub-open-room-empty {
+          display: flex;
+          align-items: center;
+          gap: var(--s3);
+          padding: var(--s4);
+          background: var(--bg-2);
+          border: 1px dashed var(--border-2);
+          border-radius: var(--r-lg);
+          color: var(--text-2);
+        }
+        .hub-open-room-empty-mark {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          border: 1px solid var(--border-2);
+          border-radius: 50%;
+          color: var(--accent-hi);
+          font-size: var(--t-lg);
+        }
+        .hub-open-room-empty strong { color: var(--text); font-size: var(--t-sm); }
+        .hub-open-room-empty p { margin-top: 2px; font-size: var(--t-xs); }
+
         /* Filter row */
         .hub-filter-row {
           display: flex;
@@ -560,6 +816,10 @@ export default function GameHub() {
           .hub-head { flex-direction: column; align-items: stretch; }
           .hub-join-form { width: 100%; }
           .hub-code-input { flex: 1; width: auto; }
+          .hub-section-head { flex-direction: column; }
+          .hub-open-room { align-items: stretch; flex-direction: column; }
+          .hub-open-room-action { align-items: stretch; }
+          .hub-open-room-btn { width: 100%; }
           .hub-grid { grid-template-columns: 1fr; }
           .hub-tabs { width: 100%; overflow-x: auto; }
           .hub-tab { flex-shrink: 0; padding: 8px 10px; }

@@ -94,6 +94,7 @@
 - [x] A "Copy Code" button copies the room code to clipboard
 - [x] Creator is automatically placed in the room as the host
 - [x] Room is listed in the active rooms for that game
+- [x] A waiting multiplayer room appears in the hub's live open-room list for other players
 
 ---
 
@@ -111,6 +112,23 @@
 - [x] If room is full: _"This room is full!"_
 - [x] If room's game has already started: _"Game already in progress."_
 - [x] On valid code, player is taken into the room immediately
+
+---
+
+### US-006A — Join an Open Room Instantly
+
+**Status:** ✅ Done  
+**Priority:** 🟡 Should Have
+
+> As a **player**, I want to see waiting rooms on the Game Hub, so that I can join a game without copying or entering a room code.
+
+**Acceptance Criteria:**
+
+- [x] The Game Hub shows live waiting rooms with the game name, host, room code, and current/max player count
+- [x] Open-room entries update when a room is created, joined, filled, started, or closed
+- [x] Clicking "Join now" joins the selected room and navigates to its lobby
+- [x] Full, started, solo, and closed rooms are not shown as open rooms
+- [x] If a room closes between listing and joining, an inline error explains that it is no longer available
 
 ---
 

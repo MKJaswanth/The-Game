@@ -86,6 +86,7 @@
 | M2-16 | "Leave Room" — return to hub | M2 | 2026-10-06 |
 | M2-17 | Server: reassign host on leave, broadcast state | M2 | 2026-10-06 |
 | M2-18 | Coming-soon cards shown as disabled | M2 | 2026-10-06 |
+| M2-19 | Live open-room browser with one-click join from the Game Hub | M2 | 2026-10-24 |
 | M3-01 | Build Snake game canvas component | M3 | 2026-10-06 |
 | M3-02 | Grid + snake movement loop | M3 | 2026-10-06 |
 | M3-03 | Arrow key + WASD input | M3 | 2026-10-06 |

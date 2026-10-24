@@ -135,6 +135,7 @@ function removePlayer(io, code, room, player, systemText) {
     stopAllGames(code);
     if (rooms.get(code) === room) rooms.delete(code);
     console.log(`[Rooms] Deleted empty room ${code}`);
+    broadcastOpenRooms(io);
     return;
   }
 
@@ -152,6 +153,7 @@ function removePlayer(io, code, room, player, systemText) {
   handleChessPlayerLeave(io, code, player.nickname);
   handleEmojiPlayerLeave(io, code, player.nickname);
   io.to(code).emit('room:state', publicRoom(room));
+  broadcastOpenRooms(io);
 }
 
 /** A live match keeps the seat warm for the grace window, then gives it up. */
@@ -194,7 +196,43 @@ export function getRoom(roomCode) {
   return rooms.get(roomCode.toUpperCase().trim());
 }
 
+/**
+ * Rooms that are visible from the hub. Keep this deliberately small: the hub
+ * only needs enough information to let another player choose and join a room,
+ * never the full private room state.
+ */
+export function getOpenRooms() {
+  return Array.from(rooms.values())
+    .filter((room) => (
+      room.status === 'waiting' &&
+      !room.isSolo &&
+      room.capacity?.max > 1 &&
+      room.players.length < room.capacity.max
+    ))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .map((room) => ({
+      code: room.code,
+      gameType: room.gameType,
+      hostNickname: room.hostNickname,
+      currentPlayers: room.players.length,
+      minPlayers: room.capacity.min,
+      maxPlayers: room.capacity.max,
+      createdAt: room.createdAt
+    }));
+}
+
+function broadcastOpenRooms(io) {
+  io.emit('rooms:update', { rooms: getOpenRooms() });
+}
+
 export function registerRoomHandlers(io, socket) {
+  // A hub can mount after the connection event has already fired, so expose an
+  // acknowledgement path as well as the live broadcast below.
+  socket.emit('rooms:update', { rooms: getOpenRooms() });
+  socket.on('rooms:get', (callback) => {
+    if (typeof callback === 'function') callback({ success: true, rooms: getOpenRooms() });
+  });
+
   // Handle room:create (US-005 / M2-05 / M2-06)
   socket.on('room:create', ({ gameType, nickname, maxPlayers, isSolo }, callback) => {
     if (!nickname) {
@@ -246,6 +284,7 @@ export function registerRoomHandlers(io, socket) {
     if (typeof callback === 'function') callback(res);
     socket.emit('room:created', res);
     io.to(roomCode).emit('room:state', publicRoom(newRoom));
+    broadcastOpenRooms(io);
 
     if (isImmediateStart) {
       io.to(roomCode).emit('game:start', { roomCode, gameType, players: newRoom.players });
@@ -328,6 +367,7 @@ export function registerRoomHandlers(io, socket) {
     };
     if (typeof callback === 'function') callback(res);
     io.to(code).emit('room:state', publicRoom(room));
+    broadcastOpenRooms(io);
   });
 
   // Handle room:get — also the resume path for a refreshed or reconnected tab
@@ -386,6 +426,7 @@ export function registerRoomHandlers(io, socket) {
     const res = { success: true, room: publicRoom(room) };
     if (typeof callback === 'function') callback(res);
     io.to(code).emit('room:state', publicRoom(room));
+    broadcastOpenRooms(io);
     io.to(code).emit('game:start', { roomCode: code, gameType: room.gameType, players: room.players });
 
     if (room.gameType === 'wordscramble') {
