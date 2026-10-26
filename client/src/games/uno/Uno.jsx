@@ -67,6 +67,73 @@ function RoundStatus({ view, isMyTurn = false, isFinal = false }) {
   );
 }
 
+function TurnOrder({ view, nickname }) {
+  const players = view?.players || [];
+  const currentIndex = players.findIndex((player) => player.isTurn);
+  const direction = view?.direction === -1 ? -1 : 1;
+  const ordered = currentIndex >= 0
+    ? players.map((_, offset) => players[(currentIndex + offset * direction + players.length) % players.length])
+    : players;
+  const meIndex = ordered.findIndex((player) => player.nickname === nickname);
+  const afterMe = meIndex >= 0 && ordered.length > 1
+    ? ordered[(meIndex + 1) % ordered.length]?.nickname
+    : null;
+
+  if (!ordered.length) return null;
+
+  return (
+    <section className="uno-turn-map" aria-label="UNO turn order">
+      <div className="uno-turn-map-head">
+        <div>
+          <div className="uno-turn-map-kicker mono">TABLE ROUTE</div>
+          <div className="uno-turn-map-title">Who plays after who</div>
+        </div>
+        <div className="uno-turn-direction mono">
+          {direction === 1 ? '↻ CLOCKWISE' : '↺ COUNTER-CLOCKWISE'}
+        </div>
+      </div>
+
+      <div className="uno-turn-sequence" role="list">
+        {ordered.map((player, index) => {
+          const isCurrent = index === 0;
+          const isAfterMe = player.nickname === afterMe;
+          return (
+            <React.Fragment key={player.nickname}>
+              {index > 0 && <span className="uno-turn-arrow" aria-hidden="true">→</span>}
+              <div
+                className={`uno-seat-node ${isCurrent ? 'is-current' : ''} ${player.nickname === nickname ? 'is-me' : ''}`}
+                role="listitem"
+                aria-label={`${player.nickname}, ${isCurrent ? 'current turn' : `${index + 1} in turn order`}`}
+              >
+                <div className="uno-seat-topline">
+                  <span className="uno-seat-index mono">{String(index + 1).padStart(2, '0')}</span>
+                  {isCurrent && <span className="uno-seat-live mono">ON TURN</span>}
+                  {!isCurrent && isAfterMe && <span className="uno-seat-after mono">AFTER YOU</span>}
+                </div>
+                <div className="uno-seat-person">
+                  <Avatar nickname={player.nickname} size="sm" />
+                  <span className="uno-seat-name">{player.nickname}</span>
+                  {player.nickname === nickname && <span className="uno-seat-you mono">YOU</span>}
+                </div>
+                <div className="uno-seat-meta mono">
+                  <span>{player.handCount} cards</span>
+                  {player.atUno && <span className="uno-seat-uno">UNO</span>}
+                </div>
+              </div>
+            </React.Fragment>
+          );
+        })}
+        {ordered.length > 1 && (
+          <>
+            <span className="uno-turn-arrow uno-turn-arrow--loop" aria-hidden="true">→</span>
+            <span className="uno-turn-loop mono">BACK TO {ordered[0].nickname.toUpperCase()}</span>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function Uno({ roomCode, onExit }) {
   const { nickname } = usePlayer();
   const [game, setGame] = useState(null);
@@ -303,17 +370,7 @@ export default function Uno({ roomCode, onExit }) {
         <RoundStatus view={view} />
         <div className="uno-spec-badge mono">👁 SPECTATING</div>
 
-        {/* Opponent rail */}
-        <div className="uno-opp-rail">
-          {view.players?.map((p) => (
-            <div key={p.nickname} className={`uno-opp ${p.isTurn ? 'is-turn' : ''}`}>
-              <Avatar nickname={p.nickname} size="sm" />
-              <span className="uo-name">{p.nickname}</span>
-              {p.atUno && <span className="uo-uno mono">UNO</span>}
-              <span className="uo-count mono">{p.handCount}</span>
-            </div>
-          ))}
-        </div>
+        <TurnOrder view={view} nickname={nickname} />
 
         {/* Center pile */}
         <div className="uno-center">
@@ -395,17 +452,7 @@ export default function Uno({ roomCode, onExit }) {
         )}
       </div>
 
-      {/* Opponent rail */}
-      <div className="uno-opp-rail">
-        {view.players?.map((p) => (
-          <div key={p.nickname} className={`uno-opp ${p.isTurn ? 'is-turn' : ''} ${p.nickname === nickname ? 'is-me' : ''}`}>
-            <Avatar nickname={p.nickname} size="sm" />
-            <span className="uo-name">{p.nickname}{p.nickname === nickname ? ' (you)' : ''}</span>
-            {p.atUno && <span className="uo-uno mono">UNO</span>}
-            <span className="uo-count mono">{p.handCount}</span>
-          </div>
-        ))}
-      </div>
+      <TurnOrder view={view} nickname={nickname} />
 
       {/* Center pile */}
       <div className="uno-center">

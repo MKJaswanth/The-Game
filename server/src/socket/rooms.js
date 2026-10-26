@@ -6,6 +6,8 @@ import { startUnoGame, stopUnoGame, handleUnoPlayerLeave } from './games/uno.js'
 import { startFlappyGame, stopFlappyGame, handleFlappyPlayerLeave } from './games/flappy.js';
 import { startChessGame, stopChessGame, handleChessPlayerLeave } from './games/chess.js';
 import { startEmojiGame, stopEmojiGame, handleEmojiPlayerLeave } from './games/emoji.js';
+import { startDrawingGame, stopDrawingGame, handleDrawingPlayerLeave } from './games/drawing.js';
+import { startLudoGame, stopLudoGame, handleLudoPlayerLeave } from './games/ludo.js';
 import { broadcastSystemMessage } from './chat.js';
 
 const rooms = new Map();
@@ -15,10 +17,12 @@ const GAME_CAPACITIES = {
   tictactoe: { min: 1, max: 2 },
   wordscramble: { min: 1, max: 6 },
   trivia: { min: 1, max: 8 },
-  uno: { min: 2, max: 6 },
+  uno: { min: 2, max: 8 },
   flappy: { min: 1, max: 4 },
   chess: { min: 2, max: 2 },
-  emoji: { min: 2, max: 8 }
+  emoji: { min: 2, max: 8 },
+  drawing: { min: 2, max: 8 },
+  ludo: { min: 2, max: 4 }
 };
 
 // A dropped socket does not immediately cost a player their seat: the room keeps
@@ -44,7 +48,11 @@ function publicPlayer(p) {
 export function publicRoom(room) {
   if (!room) return null;
   const view = { ...room, players: room.players.map(publicPlayer) };
+  // Internal routing data and the chat buffer are not room state; `messages`
+  // would also resend up to 100 lines on every room broadcast.
   delete view.reconnectTimers;
+  delete view.hostSocketId;
+  delete view.messages;
   return view;
 }
 
@@ -113,6 +121,21 @@ function resumePlayer(io, socket, room, player) {
   return { success: true, resumed: true, roomCode: code, room: view, token: player.token };
 }
 
+/**
+ * A socket holds one seat at a time. Creating or joining a room drops any
+ * earlier seat (the hub's own links can navigate without an explicit leave),
+ * so abandoned rooms cannot keep advertising a host who has moved on.
+ */
+function leavePreviousRooms(io, socket, keepCode = null) {
+  for (const [code, room] of rooms.entries()) {
+    if (code === keepCode) continue;
+    const player = room.players.find((p) => p.socketId === socket.id);
+    if (!player) continue;
+    socket.leave(code);
+    removePlayer(io, code, room, player, `${player.nickname} left the room`);
+  }
+}
+
 function stopAllGames(code) {
   stopWordScrambleGame(code);
   stopTriviaGame(code);
@@ -121,6 +144,8 @@ function stopAllGames(code) {
   stopFlappyGame(code);
   stopChessGame(code);
   stopEmojiGame(code);
+  stopDrawingGame(code);
+  stopLudoGame(code);
 }
 
 function removePlayer(io, code, room, player, systemText) {
@@ -152,6 +177,8 @@ function removePlayer(io, code, room, player, systemText) {
   handleFlappyPlayerLeave(io, code, player.nickname);
   handleChessPlayerLeave(io, code, player.nickname);
   handleEmojiPlayerLeave(io, code, player.nickname);
+  handleDrawingPlayerLeave(io, code, player.nickname);
+  handleLudoPlayerLeave(io, code, player.nickname);
   io.to(code).emit('room:state', publicRoom(room));
   broadcastOpenRooms(io);
 }
@@ -241,6 +268,14 @@ export function registerRoomHandlers(io, socket) {
       return;
     }
 
+    if (!GAME_CAPACITIES[gameType]) {
+      const err = { success: false, error: 'That game is not available.' };
+      if (typeof callback === 'function') callback(err);
+      return;
+    }
+
+    leavePreviousRooms(io, socket);
+
     const roomCode = generateRoomCode();
     const baseCap = GAME_CAPACITIES[gameType] || { min: 1, max: 8 };
     const numMax = maxPlayers ? parseInt(maxPlayers, 10) : baseCap.max;
@@ -302,6 +337,10 @@ export function registerRoomHandlers(io, socket) {
         startChessGame(io, roomCode);
       } else if (gameType === 'emoji') {
         startEmojiGame(io, roomCode);
+      } else if (gameType === 'drawing') {
+        startDrawingGame(io, roomCode);
+      } else if (gameType === 'ludo') {
+        startLudoGame(io, roomCode);
       }
     }
   });
@@ -326,6 +365,7 @@ export function registerRoomHandlers(io, socket) {
     // Reclaiming a seat (refresh, reconnect, dropped wifi) beats the in-progress guard.
     const resumable = findResumablePlayer(room, { nickname, token });
     if (resumable) {
+      leavePreviousRooms(io, socket, code);
       const resumed = resumePlayer(io, socket, room, resumable);
       if (typeof callback === 'function') callback(resumed);
       return;
@@ -339,11 +379,22 @@ export function registerRoomHandlers(io, socket) {
 
     const existingPlayer = room.players.find(p => p.socketId === socket.id || p.nickname.toLowerCase() === nickname.toLowerCase());
 
+    // Two tabs with the same callsign used to share one seat: the second socket
+    // got "success" plus the first player's resume token, but chat and game
+    // actions rejected it because its socket id was never seated.
+    if (existingPlayer && existingPlayer.socketId !== socket.id) {
+      const err = { success: false, error: 'That callsign is already seated in this room.' };
+      if (typeof callback === 'function') callback(err);
+      return;
+    }
+
     if (!existingPlayer && room.players.length >= room.capacity.max) {
       const err = { success: false, error: `Room is full (max ${room.capacity.max} players).` };
       if (typeof callback === 'function') callback(err);
       return;
     }
+
+    leavePreviousRooms(io, socket, code);
 
     let joinedPlayer = existingPlayer;
     if (!existingPlayer) {
@@ -443,20 +494,25 @@ export function registerRoomHandlers(io, socket) {
       startChessGame(io, code);
     } else if (room.gameType === 'emoji') {
       startEmojiGame(io, code);
+    } else if (room.gameType === 'drawing') {
+      startDrawingGame(io, code);
+    } else if (room.gameType === 'ludo') {
+      startLudoGame(io, code);
     }
   });
 
   // Handle room:leave — an explicit exit gives up the seat immediately
-  socket.on('room:leave', ({ roomCode, nickname }, callback) => {
+  socket.on('room:leave', ({ roomCode }, callback) => {
     const code = roomCode?.toUpperCase()?.trim();
     const room = rooms.get(code);
 
     if (room) {
-      const player = room.players.find(
-        (p) => p.socketId === socket.id || p.nickname === nickname
-      );
+      // Only this socket's own seat may be given up. Matching the supplied
+      // nickname let any client with a room code kick another player (and a
+      // solo room's last player deleted the whole room).
+      const player = room.players.find((p) => p.socketId === socket.id);
       socket.leave(code);
-      if (player) removePlayer(io, code, room, player, `${nickname} left the room`);
+      if (player) removePlayer(io, code, room, player, `${player.nickname} left the room`);
     }
 
     if (typeof callback === 'function') callback({ success: true });
@@ -468,10 +524,12 @@ export function registerRoomHandlers(io, socket) {
       const player = room.players.find((p) => p.socketId === socket.id);
       if (!player) continue;
 
-      const matchLive = room.status === 'in_game' || room.status === 'finished';
-      if (matchLive && !room.isSolo) {
+      // Any multiplayer seat is held through the grace window, not just a live
+      // match: a refresh in the waiting lobby is as recoverable as one mid-game
+      // and used to delete the room before the tab could resume it.
+      if (!room.isSolo) {
         console.log(
-          `[Rooms] Player ${player.nickname} dropped from live room ${code}; holding their seat for ${Math.round(RECONNECT_GRACE_MS / 1000)}s`
+          `[Rooms] Player ${player.nickname} dropped from room ${code}; holding their seat for ${Math.round(RECONNECT_GRACE_MS / 1000)}s`
         );
         markDisconnected(io, room, player);
       } else {

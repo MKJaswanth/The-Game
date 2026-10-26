@@ -251,6 +251,30 @@
 .chess-status.is-check .chess-status-dot { background: var(--red); }
 .chess-status.is-over { color: var(--text-2); }
 .chess-status.is-over .chess-status-dot { background: var(--text-3); }
+.chess-status-text { min-width: 0; }
+.chess-clock {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  color: var(--accent-hi);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.chess-clock.is-urgent {
+  border-color: rgba(208, 104, 97, 0.55);
+  background: var(--red-dim);
+  color: #f0b3ae;
+  animation: chessClockPulse 700ms ease-in-out infinite alternate;
+}
+@keyframes chessClockPulse {
+  from { opacity: 0.72; }
+  to { opacity: 1; }
+}
 
 .chess-error {
   font-size: var(--t-xs);

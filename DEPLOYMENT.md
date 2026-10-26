@@ -130,7 +130,7 @@ Run this against the deployed URL after every deploy.
 - [x] Player profile shows the games just played
 - [x] Responsive layout verified down to 360px
 
-> Deployed builds were smoke-tested from a clean clone of the repo: `npm ci` in `server/` and `client/`, `npm run build` in `client/`, then `node server/src/index.js` serving the SPA, REST API and Socket.IO on one port, with `test-chess.mjs` (44 assertions) and `test-emoji.mjs` (five full rounds) passing against that server.
+> Deployed builds were smoke-tested from a clean clone of the repo: `npm ci` in `server/` and `client/`, `npm run build` in `client/`, then `node server/src/index.js` serving the SPA, REST API and Socket.IO on one port, with `test-chess.mjs` (46 assertions) and `test-emoji.mjs` (five full rounds) passing against that server.
 
 ### Free-tier notes (Render)
 - Free web services sleep after ~15 minutes of inactivity; the first request afterwards takes ~30 s to wake. Sockets reconnect on their own once the instance is up.

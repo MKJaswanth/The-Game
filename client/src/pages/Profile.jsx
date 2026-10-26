@@ -13,7 +13,9 @@ const GAME_LABELS = {
   uno: 'UNO',
   flappy: 'Flappy Race',
   chess: 'Chess',
-  emoji: 'Emoji Guessing'
+  emoji: 'Emoji Guessing',
+  drawing: 'Draw & Guess',
+  ludo: 'Ludo'
 };
 
 function formatGameType(t) {

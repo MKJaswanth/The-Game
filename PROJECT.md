@@ -89,7 +89,7 @@
 ### Phase 2 — Growth
 | # | Game | Type | Players |
 |---|---|---|---|
-| 5 | **UNO** | Card game, real-time | 2–6 |
+| 5 | **UNO** | Card game, real-time | 2–8 |
 | 6 | **Flappy Race** | Competitive Flappy Bird | 1–4 |
 | 7 | **Chess** | Turn-based | 2 |
 | 8 | **Emoji Guessing** | Party game | 2–8 |
@@ -97,7 +97,7 @@
 ### Phase 3 — Advanced
 | # | Game | Type | Players |
 |---|---|---|---|
-| 9 | **Skribbl-style Drawing** | Multiplayer drawing/guessing | 2–8 |
+| 9 | **Draw & Guess** | Multiplayer drawing/guessing | 2–8 |
 | 10 | **Ludo** | Board game | 2–4 |
 
 ---
@@ -315,8 +315,8 @@ CREATE TABLE scores (
 - [ ] Game history log
 
 ### 🏁 Phase 3 — Polish
-- [ ] **Drawing / Guessing** game (Skribbl-style)
-- [ ] **Ludo** board game
+- [x] **Draw & Guess** game
+- [x] **Ludo** board game
 - [ ] Sound effects & music toggle
 - [ ] Full mobile responsiveness
 - [ ] PWA support (installable)

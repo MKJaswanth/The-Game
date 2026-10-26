@@ -13,15 +13,19 @@ import Uno from '../games/uno/Uno.jsx';
 import Flappy from '../games/flappy/Flappy.jsx';
 import Chess from '../games/chess/Chess.jsx';
 import Emoji from '../games/emoji/Emoji.jsx';
+import Drawing from '../games/drawing/Drawing.jsx';
+import Ludo from '../games/ludo/Ludo.jsx';
 
 const RULES = {
   wordscramble: { title: '10 Word Rounds',     detail: '30 s per round, speed bonus applies' },
   trivia:       { title: '10 Questions',        detail: '15 s per question, first correct earns bonus' },
   tictactoe:    { title: '1v1 Match',           detail: 'First to 3-in-a-row wins' },
-  uno:          { title: '108-Card Deck',       detail: 'Match color or symbol · call UNO with 1 card' },
+  uno:          { title: '108-Card Deck · 2–8 Players', detail: 'Match color or symbol · stack draw cards · call UNO with 1 card' },
   flappy:       { title: 'Neon Pipe Race',      detail: 'Last bird flying wins · Space / tap to flap' },
   chess:        { title: 'Classic 1v1',          detail: 'Server-validated moves · checkmate, draw & rematch' },
   emoji:        { title: '5 Emoji Rounds',       detail: '60 s per clue · clue-giver earns points too' },
+  drawing:      { title: '5 Drawing Rounds',     detail: '80 s per round · drawer bonus · speed scoring' },
+  ludo:         { title: 'Four-Token Race',      detail: 'Server dice · captures · safe squares · first home wins' },
   snake:        { title: 'Survival Run',        detail: 'Eat, grow, avoid walls — score to leaderboard' },
 };
 
@@ -54,15 +58,17 @@ export default function Room() {
 
     let active = true;
 
-    const joinRoom = () => socket.emit('room:join', { roomCode, nickname: currentNick, token: readToken() }, (r) => {
+    const joinRoom = () => socket.timeout(5000).emit('room:join', { roomCode, nickname: currentNick, token: readToken() }, (err, r) => {
       if (!active) return;
       setLoading(false);
+      if (err) { setError('Connection timed out. Please try again.'); return; }
       if (r?.success) { saveToken(r.token); setRoom(r.room); }
       else setError(r?.error || 'Room not found');
     });
 
-    const syncRoom = () => socket.emit('room:get', { roomCode, nickname: currentNick, token: readToken() }, (res) => {
+    const syncRoom = () => socket.timeout(5000).emit('room:get', { roomCode, nickname: currentNick, token: readToken() }, (err, res) => {
       if (!active) return;
+      if (err) { setLoading(false); setError('Connection timed out. Please try again.'); return; }
       if (!res?.success || !res.room) { joinRoom(); return; }
       setLoading(false);
       if (res.token) saveToken(res.token);
@@ -91,15 +97,39 @@ export default function Room() {
     };
   }, [roomCode, currentNick, socket, navigate]);
 
+  // Leaving through the top nav (Hub, Leaderboard, profile) is an in-app route
+  // change, so the socket stays connected and the server kept the seat — the
+  // room stayed listed with a host who was already on the Hub. Give it up on
+  // unmount; a full reload does not run this cleanup, so refresh still uses the
+  // reconnect grace window. The 0 ms arm skips StrictMode's double-mount in dev.
+  useEffect(() => {
+    if (!socket || !roomCode || !currentNick) return undefined;
+    let armed = false;
+    const arm = setTimeout(() => { armed = true; }, 0);
+    return () => {
+      clearTimeout(arm);
+      if (armed) socket.emit('room:leave', { roomCode, nickname: currentNick });
+    };
+  }, [socket, roomCode, currentNick]);
+
   useEffect(() => {
     if (
       room && ['wordscramble','trivia','tictactoe','flappy'].includes(room.gameType) &&
       room.status === 'waiting' && room.players.length === 1 &&
       (room.capacity?.max === 1 || room.isSolo) && socket
-    ) socket.emit('room:start', { roomCode }, (r) => { if (r && !r.success) setError(r.error); });
+    ) socket.timeout(5000).emit('room:start', { roomCode }, (err, r) => {
+      if (err) setError('Connection timed out. Please try again.');
+      else if (r && !r.success) setError(r.error);
+    });
   }, [room, roomCode, socket]);
 
-  const handleStart = () => { if (!socket || !canStart) return; socket.emit('room:start', { roomCode }, (r) => { if (r && !r.success) setError(r.error); }); };
+  const handleStart = () => {
+    if (!socket || !canStart) return;
+    socket.timeout(5000).emit('room:start', { roomCode }, (err, r) => {
+      if (err) setError('Connection timed out. Please try again.');
+      else if (r && !r.success) setError(r.error);
+    });
+  };
   const handleCopy  = async () => { try { await navigator.clipboard.writeText(roomCode); } catch {} setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const handleLeave = () => { socket?.emit('room:leave', { roomCode, nickname: currentNick }); navigate('/hub'); };
 
@@ -146,6 +176,8 @@ export default function Room() {
     if (room.gameType === 'flappy'       && isActive) return <Flappy       roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
     if (room.gameType === 'chess'        && isActive) return <Chess        roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
     if (room.gameType === 'emoji'        && isActive) return <Emoji        roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'drawing'      && isActive) return <Drawing      roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
+    if (room.gameType === 'ludo'         && isActive) return <Ludo         roomCode={roomCode} isHost={isHost} onExit={handleLeave} />;
     return null;
   })();
 

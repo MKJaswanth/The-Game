@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101114" />
+    <title>The Game — Offline</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101114; color: #e8eaee; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; box-sizing: border-box; }
+      main { width: min(420px, 100%); padding: 32px; border: 1px solid #343a45; border-radius: 12px; background: #191c20; text-align: center; }
+      .mark { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 8px; background: #d4a24a; color: #16130c; font-size: 24px; font-weight: 800; }
+      h1 { margin: 20px 0 8px; font-size: 28px; }
+      p { margin: 0; color: #9aa0ab; line-height: 1.6; }
+      button { margin-top: 24px; padding: 11px 18px; border: 0; border-radius: 8px; background: #d4a24a; color: #16130c; font-weight: 700; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="mark">⚡</span>
+      <h1>You're offline</h1>
+      <p>The Game needs a connection for live rooms. Reconnect and try again when you're back online.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

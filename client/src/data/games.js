@@ -51,13 +51,13 @@ export const GAMES_CATALOG = [
     id: 'uno',
     title: 'UNO',
     description: 'The beloved card game of colors, skips, reverses, and wild draws — call UNO to win.',
-    playerCount: '2–6 Players',
+    playerCount: '2–8 Players',
     category: 'CARD GAME',
     badgeVariant: 'success',
     isAvailable: true,
     supportsSolo: false,
     minPlayers: 2,
-    maxPlayers: 6
+    maxPlayers: 8
   },
   {
     id: 'flappy',
@@ -94,5 +94,29 @@ export const GAMES_CATALOG = [
     supportsSolo: false,
     minPlayers: 2,
     maxPlayers: 8
+  },
+  {
+    id: 'drawing',
+    title: 'Draw & Guess',
+    description: 'One player draws a secret word while the room races to guess it. Five rounds, rotating artists, live canvas.',
+    playerCount: '2–8 Players',
+    category: 'PARTY GAME',
+    badgeVariant: 'primary',
+    isAvailable: true,
+    supportsSolo: false,
+    minPlayers: 2,
+    maxPlayers: 8
+  },
+  {
+    id: 'ludo',
+    title: 'Ludo',
+    description: 'Race four tokens around the board, capture rivals on unsafe squares, and bring every token home first.',
+    playerCount: '2–4 Players',
+    category: 'BOARD GAME',
+    badgeVariant: 'warning',
+    isAvailable: true,
+    supportsSolo: false,
+    minPlayers: 2,
+    maxPlayers: 4
   }
 ];

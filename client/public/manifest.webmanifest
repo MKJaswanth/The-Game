@@ -1,0 +1,19 @@
+{
+  "name": "The Game — Multiplayer Arcade",
+  "short_name": "The Game",
+  "description": "A fast browser-based multiplayer gaming hub for teams and friends.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101114",
+  "theme_color": "#101114",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

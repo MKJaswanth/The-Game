@@ -9,6 +9,8 @@ import { registerUnoHandlers } from './games/uno.js';
 import { registerFlappyHandlers } from './games/flappy.js';
 import { registerChessHandlers } from './games/chess.js';
 import { registerEmojiHandlers } from './games/emoji.js';
+import { registerDrawingHandlers } from './games/drawing.js';
+import { registerLudoHandlers } from './games/ludo.js';
 
 let ioInstance = null;
 
@@ -37,6 +39,8 @@ export function initSocket(httpServer) {
     registerFlappyHandlers(ioInstance, socket);
     registerChessHandlers(ioInstance, socket);
     registerEmojiHandlers(ioInstance, socket);
+    registerDrawingHandlers(ioInstance, socket);
+    registerLudoHandlers(ioInstance, socket);
   });
 
   return ioInstance;

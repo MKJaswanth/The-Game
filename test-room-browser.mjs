@@ -41,6 +41,13 @@ const B = client('RoomGuest');
 try {
   await await_(() => A.connected && B.connected, 'socket connections');
 
+  const unsupported = await emit(A, 'room:create', {
+    gameType: 'not-a-real-game',
+    nickname: A.nickname,
+    maxPlayers: 2
+  });
+  ok(unsupported?.success === false, 'unknown game types are rejected');
+
   const created = await emit(A, 'room:create', {
     gameType: 'trivia',
     nickname: A.nickname,
@@ -63,6 +70,12 @@ try {
   ok(joined?.success, 'listed room can be joined through the normal room:join path');
 
   await await_(() => !A.openRooms.some((room) => room.code === roomCode), 'full room disappears from open rooms');
+  // The broadcast reaches each socket independently, so wait for the joiner's
+  // copy too instead of assuming it landed before the host's.
+  await await_(
+    () => !B.openRooms.some((room) => room.code === roomCode),
+    'joining client receives the refreshed list'
+  );
   ok(!B.openRooms.some((room) => room.code === roomCode), 'joining client also receives the refreshed list');
 
   const started = await emit(A, 'room:start', { roomCode });

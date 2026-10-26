@@ -13,6 +13,9 @@ import { recordScore } from '../../routes/scores.js';
 const activeChessGames = new Map();
 
 const PIECE_VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+const CHESS_TURN_MS = Number(process.env.CHESS_TURN_MS) > 0
+  ? Number(process.env.CHESS_TURN_MS)
+  : 60_000;
 
 export function getChessGame(roomCode) {
   return activeChessGames.get(roomCode?.toUpperCase()?.trim());
@@ -77,7 +80,9 @@ export function buildChessPayload(game) {
     drawOffer: game.drawOffer,
     rematchVotes: Array.from(game.rematchVotes),
     moveCount: game.moveCount,
-    startedAt: game.startedAt
+    startedAt: game.startedAt,
+    turnEndsAt: game.turnEndsAt,
+    turnDurationMs: CHESS_TURN_MS
   };
 }
 
@@ -85,6 +90,34 @@ export function broadcastChessState(io, roomCode) {
   const game = getChessGame(roomCode);
   if (!game) return;
   io.to(game.roomCode).emit('chess:state', buildChessPayload(game));
+}
+
+function clearTurnTimer(game) {
+  if (game.turnTimer) clearTimeout(game.turnTimer);
+  game.turnTimer = null;
+}
+
+function armTurnTimer(io, game) {
+  clearTurnTimer(game);
+  if (game.status !== 'in_game') {
+    game.turnEndsAt = null;
+    return;
+  }
+
+  const endsAt = Date.now() + CHESS_TURN_MS;
+  game.turnEndsAt = endsAt;
+  game.turnTimer = setTimeout(() => {
+    if (game.status !== 'in_game' || game.turnEndsAt !== endsAt) return;
+
+    const timedOutColor = game.chess.turn();
+    const winner = timedOutColor === 'w' ? game.players.b : game.players.w;
+    finishGame(io, game, {
+      type: 'timeout',
+      winner,
+      reason: `${game.players[timedOutColor]} ran out of time`
+    });
+  }, CHESS_TURN_MS + 25);
+  if (typeof game.turnTimer.unref === 'function') game.turnTimer.unref();
 }
 
 /**
@@ -120,10 +153,13 @@ export function startChessGame(io, roomCode, { swapColors = false } = {}) {
     captured: { w: [], b: [] },
     moveCount: 0,
     startedAt: Date.now(),
+    turnEndsAt: null,
+    turnTimer: null,
     previousResult: previous?.result || null
   };
 
   activeChessGames.set(code, game);
+  armTurnTimer(io, game);
   console.log(`[Chess] Game started in room ${code}: ${order[0]} (white) vs ${order[1]} (black)`);
 
   broadcastChessState(io, code);
@@ -132,7 +168,9 @@ export function startChessGame(io, roomCode, { swapColors = false } = {}) {
 
 export function stopChessGame(roomCode) {
   const code = roomCode?.toUpperCase()?.trim();
-  if (activeChessGames.has(code)) {
+  const game = activeChessGames.get(code);
+  if (game) {
+    clearTurnTimer(game);
     activeChessGames.delete(code);
     console.log(`[Chess] Cleaned up game for room ${code}`);
   }
@@ -148,6 +186,8 @@ async function finishGame(io, game, result) {
   game.result = result;
   game.drawOffer = null;
   game.rematchVotes = new Set();
+  clearTurnTimer(game);
+  game.turnEndsAt = null;
 
   console.log(
     `[Chess] Room ${game.roomCode} finished — ${result.type}${result.winner ? `, winner ${result.winner}` : ''}`
@@ -233,7 +273,10 @@ export async function makeChessMove(io, roomCode, nickname, { from, to, promotio
   }
 
   const ended = detectEnd(io, game);
-  if (!ended) broadcastChessState(io, game.roomCode);
+  if (!ended) {
+    armTurnTimer(io, game);
+    broadcastChessState(io, game.roomCode);
+  }
 
   return { success: true, move: game.lastMove };
 }

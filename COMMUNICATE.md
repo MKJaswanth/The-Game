@@ -38,14 +38,14 @@
 ## What Was Just Built & Verified
 
 - **All eight games are live.** Chess and Emoji Guessing completed Phase 2; the landing page and hub now read every game (title, player count, live state) from `client/src/data/games.js`, so those lists can never drift again.
-- **Chess (`server/src/socket/games/chess.js`, `client/src/games/chess/Chess.jsx`):** server owns the `chess.js` instance and re-validates every move; broadcasts carry FEN plus the legal-move map for the side to move. Check/checkmate/stalemate/threefold/insufficient-material/fifty-move, draw offers, resign, forfeit-on-leave and colour-swapping rematches are all covered by `test-chess.mjs` (44 assertions).
+- **Chess (`server/src/socket/games/chess.js`, `client/src/games/chess/Chess.jsx`):** server owns the `chess.js` instance and re-validates every move; broadcasts carry FEN plus the legal-move map for the side to move. Check/checkmate/stalemate/threefold/insufficient-material/fifty-move, draw offers, resign, forfeit-on-leave, colour-swapping rematches, and the server-authoritative inactivity clock are covered by `test-chess.mjs` (46 assertions) plus `test-chess-clock.mjs`.
 - **Emoji Guessing (`server/src/socket/games/emoji.js`, `client/src/games/emoji/Emoji.jsx`):** 114-answer bank with hints, rotating clue-giver, answers delivered only to the clue-giver's socket, 30 s compose with authored-hint fallback, 60 s guesses, normalized matching, speed scoring (+40 for the clue-giver), five rounds and rematch voting — covered by `test-emoji.mjs`.
 - **Single-service production mode:** `server/src/index.js` serves `client/dist` (with SPA fallback and immutable asset caching) whenever a build exists, so API + Socket.IO + UI share one origin. `render.yaml` builds the client and starts `node server/src/index.js`; `client/src/socket/socket.js` falls back to same-origin when it is not running behind the Vite dev/preview port. Verified at `http://localhost:4000` — deep links, `/health`, REST and websockets all served from one process.
 
 ## Next Up: Phase 2 QA & Deploy (Milestone M15)
-- Fix the reload-drop defect (reconnect grace window so a refresh does not eject a player from an in-game room).
-- Add a chess move clock so a stalling player cannot hold a room.
-- Re-run `test-uno.mjs`, `test-flappy.mjs`, `test-chess.mjs`, `test-emoji.mjs`, then deploy to Render and verify the live URL.
+- Finish the non-Supabase production hardening pass: room/chat acknowledgement deadlines, Chess inactivity clock, full regression, and mobile/PWA checks.
+- Supabase configuration and production persistence are intentionally deferred until the user is ready.
+- Re-run the suites, then deploy and verify the live URL when the production credentials are available.
 
 ---
 
@@ -141,7 +141,8 @@ cd client && npm run dev
 # Engine suites (backend must be running on :4000)
 node test-uno.mjs        # 15 assertions
 node test-flappy.mjs     # 21 assertions
-node test-chess.mjs      # 44 assertions
+node test-chess.mjs      # 46 assertions
+node test-chess-clock.mjs # requires CHESS_TURN_MS <= 5000
 node test-emoji.mjs      # 5 full rounds
 
 # Production mode — one origin for API + sockets + UI

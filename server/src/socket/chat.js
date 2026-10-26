@@ -113,6 +113,14 @@ export function registerChatHandlers(io, socket) {
       return;
     }
 
+    // Open-room codes are public, so history is for seated players only. A
+    // bystander could previously read any listed room's conversation.
+    const player = room.players.find((p) => p.socketId === socket.id);
+    if (!player) {
+      if (typeof callback === 'function') callback({ success: false, error: 'You are not in this room' });
+      return;
+    }
+
     if (typeof callback === 'function') {
       callback({ success: true, messages: room.messages || [] });
     }

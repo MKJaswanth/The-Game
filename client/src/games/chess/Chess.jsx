@@ -49,6 +49,8 @@ function resultText(result) {
       return `${winner} wins — ${result.reason}`;
     case 'abandon':
       return `${winner} wins — ${result.reason}`;
+    case 'timeout':
+      return `${winner} wins on time — ${result.reason}`;
     case 'stalemate':
       return 'Draw — stalemate, no legal moves';
     case 'draw':
@@ -101,6 +103,7 @@ export default function Chess({ roomCode, onExit }) {
   const [pendingPromotion, setPendingPromotion] = useState(null);
   const [error, setError] = useState('');
   const [confirmResign, setConfirmResign] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const errorTimer = useRef(null);
 
   const flashError = useCallback((message) => {
@@ -112,11 +115,18 @@ export default function Chess({ roomCode, onExit }) {
   useEffect(() => () => clearTimeout(errorTimer.current), []);
 
   useEffect(() => {
+    if (state?.status !== 'in_game' || !state.turnEndsAt) return undefined;
+    const timer = setInterval(() => setClockNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, [state?.status, state?.turnEndsAt]);
+
+  useEffect(() => {
     if (!socket || !roomCode) return undefined;
 
     const onState = (payload) => {
       if (payload?.roomCode !== roomCode) return;
       setState(payload);
+      setClockNow(Date.now());
       setSelected(null);
       setPendingPromotion(null);
     };
@@ -220,6 +230,12 @@ export default function Chess({ roomCode, onExit }) {
   const opponentVoted = state.rematchVotes?.some((n) => n !== nick);
   const offerFromMe = state.drawOffer === nick;
   const offerFromOpponent = state.drawOffer && state.drawOffer !== nick;
+  const secondsLeft = state.turnEndsAt
+    ? Math.max(0, Math.ceil((state.turnEndsAt - clockNow) / 1000))
+    : null;
+  const clockLabel = secondsLeft === null
+    ? null
+    : `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
 
   let statusLine = '';
   if (!isLive) statusLine = resultText(state.result);
@@ -304,7 +320,15 @@ export default function Chess({ roomCode, onExit }) {
       <aside className="chess-side">
         <div className={`chess-status ${isCheckOnMe ? 'is-check' : ''} ${!isLive ? 'is-over' : ''}`}>
           <span className="chess-status-dot" />
-          <span>{statusLine}</span>
+          <span className="chess-status-text">{statusLine}</span>
+          {isLive && clockLabel && (
+            <span
+              className={`chess-clock ${secondsLeft <= 10 ? 'is-urgent' : ''}`}
+              aria-label={`${secondsLeft} seconds remaining`}
+            >
+              {clockLabel}
+            </span>
+          )}
         </div>
 
         {error && <p className="chess-error" role="alert">{error}</p>}

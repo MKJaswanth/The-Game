@@ -72,8 +72,9 @@ export default function GameHub() {
   const createRoom = (gameType, opts = {}) => {
     if (!socket?.connected) { setRoomError('Not connected'); return; }
     setIsProcessing(true); setRoomError('');
-    socket.emit('room:create', { gameType, nickname: currentNick, maxPlayers: opts.maxPlayers || selectedMaxPlayers || 4, isSolo: Boolean(opts.isSolo) }, (res) => {
+    socket.timeout(5000).emit('room:create', { gameType, nickname: currentNick, maxPlayers: opts.maxPlayers || selectedMaxPlayers || 4, isSolo: Boolean(opts.isSolo) }, (err, res) => {
       setIsProcessing(false);
+      if (err) { setRoomError('Connection timed out. Please try again.'); return; }
       if (res?.success) { setSelectedGame(null); navigate(`/room/${res.roomCode}`); }
       else setRoomError(res?.error || 'Failed to create room');
     });
@@ -85,8 +86,9 @@ export default function GameHub() {
     if (c.length !==6){ setRoomError('Code must be 6 characters'); return; }
     if (!socket?.connected) { setRoomError('Not connected'); return; }
     setIsProcessing(true); setRoomError('');
-    socket.emit('room:join', { roomCode: c, nickname: currentNick }, (res) => {
+    socket.timeout(5000).emit('room:join', { roomCode: c, nickname: currentNick }, (err, res) => {
       setIsProcessing(false);
+      if (err) { setRoomError('Connection timed out. Please try again.'); return; }
       if (res?.success) { setSelectedGame(null); navigate(`/room/${c}`); }
       else setRoomError(res?.error || 'Room not found');
     });
@@ -119,7 +121,8 @@ export default function GameHub() {
     const c = directCode.trim().toUpperCase();
     if (c.length !== 6) { setDirectCodeError('Need 6 characters'); return; }
     setDirectCodeError('');
-    socket.emit('room:join', { roomCode: c, nickname: currentNick }, (res) => {
+    socket.timeout(5000).emit('room:join', { roomCode: c, nickname: currentNick }, (err, res) => {
+      if (err) { setDirectCodeError('Connection timed out. Please try again.'); return; }
       if (res?.success) navigate(`/room/${c}`);
       else setDirectCodeError(res?.error || 'Room not found');
     });

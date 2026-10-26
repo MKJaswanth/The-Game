@@ -55,8 +55,8 @@ Draw  Ludo  Sound  PWA  Final QA
 | **M13** | 2 | Chess | US-028–029 | ✅ |
 | **M14** | 2 | Emoji Guessing Game | US-030–031 | ✅ |
 | **M15** | 2 | Phase 2 QA & Deploy Update | All Phase 2 | 🔲 |
-| **M16** | 3 | Skribbl Drawing Game | US-032–033 | 🔲 |
-| **M17** | 3 | Ludo Board Game | US-034–035 | 🔲 |
+| **M16** | 3 | Draw & Guess Game | US-032–033 | ✅ |
+| **M17** | 3 | Ludo Board Game | US-034–035 | ✅ |
 | **M18** | 3 | Sound Effects & Music | US-036 | 🔲 |
 | **M19** | 3 | Mobile Responsiveness & PWA | US-037–038 | 🔲 |
 | **M20** | 3 | Final QA & Production Polish | All | 🔲 |
@@ -410,7 +410,7 @@ Draw  Ludo  Sound  PWA  Final QA
 ---
 
 ## M11 — UNO Card Game 🃏
-**Goal:** Full UNO game (2–6 players) playable in real-time.  
+**Goal:** Full UNO game (2–8 players) playable in real-time.
 **Stories:** US-025, US-026 *(write before starting)*
 
 ### Tasks
@@ -430,9 +430,11 @@ Draw  Ludo  Sound  PWA  Final QA
 | M11-12 | Client: show other players' card counts (face down) | ✅ |
 | M11-13 | Final screen — winner + "Play Again" | ✅ |
 | M11-14 | Submit win to Supabase scores | ✅ |
+| M11-19 | Expand UNO capacity to 2–8 players and verify eight-seat privacy/start flow | ✅ |
+| M11-20 | Replace the compact opponent rail with a responsive turn-order table map | ✅ |
 
 ### ✅ Definition of Done
-- [x] Full UNO game playable 2–6 players
+- [x] Full UNO game playable 2–8 players
 - [x] All special cards work correctly
 - [x] Turn enforcement works server-side
 - [x] Wild color selection works
@@ -549,36 +551,36 @@ Draw  Ludo  Sound  PWA  Final QA
 # 🟢 PHASE 3 — ADVANCED & POLISH
 > **Goal:** Complex games, full mobile support, sound, PWA — the complete final product.
 
-> ⚠️ Write User Stories (US-032 to US-038) in `USER_STORIES.md` before starting Phase 3.
+> User Stories US-032 to US-035 are finalized and implemented. Remaining Phase 3 stories must be written before their milestones start.
 
 ---
 
-## M16 — Skribbl-Style Drawing & Guessing Game 🎨
+## M16 — Draw & Guess Game 🎨
 **Goal:** One player draws, others guess — real-time collaborative canvas game.  
 **Stories:** US-032, US-033 *(write before starting)*
 
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M16-01 | Client: shared drawing canvas using HTML5 Canvas API | 🔲 |
-| M16-02 | Client (drawer): brush tool, color picker, eraser, clear button | 🔲 |
-| M16-03 | Client: broadcast canvas strokes via `draw:stroke` socket events | 🔲 |
-| M16-04 | Client (guessers): real-time rendering of received strokes | 🔲 |
-| M16-05 | Server: assign drawer per round, send word only to drawer | 🔲 |
-| M16-06 | Client (guessers): text input for guesses + live chat display | 🔲 |
-| M16-07 | Server: validate guesses, award points (faster = more points) | 🔲 |
-| M16-08 | Display word as blanks `_ _ _ _` to guessers, reveal on correct guess | 🔲 |
-| M16-09 | 80-second round timer | 🔲 |
-| M16-10 | Rotate drawer each round, 5 rounds per game | 🔲 |
-| M16-11 | Final screen — winner + scores + Play Again | 🔲 |
-| M16-12 | Submit scores to Supabase | 🔲 |
+| M16-01 | Client: shared drawing canvas using HTML5 Canvas API | ✅ |
+| M16-02 | Client (drawer): brush tool, color picker, eraser, clear button | ✅ |
+| M16-03 | Client/server: broadcast validated canvas strokes | ✅ |
+| M16-04 | Client (guessers): real-time rendering of received strokes | ✅ |
+| M16-05 | Server: assign drawer per round, send word only to drawer | ✅ |
+| M16-06 | Client (guessers): answer blanks, guess input, and public feed | ✅ |
+| M16-07 | Server: validate guesses and award speed/drawer points | ✅ |
+| M16-08 | Display word blanks and reveal the answer after each round | ✅ |
+| M16-09 | 80-second round timer | ✅ |
+| M16-10 | Rotate drawer each round, 5 rounds per game | ✅ |
+| M16-11 | Final screen — winner, rematch voting, and leave | ✅ |
+| M16-12 | Submit scores to Supabase | ✅ |
 
 ### ✅ Definition of Done
-- [ ] Drawing strokes render in real-time for all players
-- [ ] Only the drawer sees the word
-- [ ] Correct guesses award points and reveal the word
-- [ ] 5 rounds with rotating drawers complete correctly
-- [ ] Canvas clears cleanly between rounds
+- [x] Drawing strokes render in real-time for all players
+- [x] Only the drawer sees the word
+- [x] Correct guesses award points and reveal the word
+- [x] 5 rounds with rotating drawers complete correctly
+- [x] Canvas clears cleanly between rounds
 
 ---
 
@@ -589,25 +591,25 @@ Draw  Ludo  Sound  PWA  Final QA
 ### Tasks
 | # | Task | Status |
 |---|---|---|
-| M17-01 | Design Ludo board layout (SVG or Canvas) | 🔲 |
-| M17-02 | Server: Ludo engine — token positions, turn order, dice rolls | 🔲 |
-| M17-03 | Server: dice roll generates 1–6, emit to all players | 🔲 |
-| M17-04 | Server: validate and apply token moves (safe squares, home column) | 🔲 |
-| M17-05 | Server: handle captures — send opponent token back to start | 🔲 |
-| M17-06 | Server: detect win (all 4 tokens home) | 🔲 |
-| M17-07 | Client: render board, colored tokens, home base areas | 🔲 |
-| M17-08 | Client: animate token movement along board path | 🔲 |
-| M17-09 | Client: roll dice button → emit `ludo:roll` | 🔲 |
-| M17-10 | Client: highlight moveable tokens after dice roll | 🔲 |
-| M17-11 | Final screen — winner + Play Again | 🔲 |
-| M17-12 | Submit win to Supabase | 🔲 |
+| M17-01 | Design responsive Ludo board layout | ✅ |
+| M17-02 | Server: Ludo engine — token positions, turn order, dice rolls | ✅ |
+| M17-03 | Server: dice roll generates 1–6 and broadcasts it | ✅ |
+| M17-04 | Server: validate and apply token moves, safe squares, home lane | ✅ |
+| M17-05 | Server: handle captures — send opponent token back to start | ✅ |
+| M17-06 | Server: detect win when all 4 tokens reach home | ✅ |
+| M17-07 | Client: render board, colored tokens, home bases | ✅ |
+| M17-08 | Client: highlight moveable tokens after a dice roll | ✅ |
+| M17-09 | Client: roll dice button → emit `ludo:roll` | ✅ |
+| M17-10 | Client: token movement and turn HUD | ✅ |
+| M17-11 | Final screen — winner + rematch | ✅ |
+| M17-12 | Submit win/loss scores to Supabase | ✅ |
 
 ### ✅ Definition of Done
-- [ ] All 4 player colors render on board correctly
-- [ ] Dice rolls are server-generated (not client)
-- [ ] Token captures work correctly
-- [ ] Win detected when all 4 tokens reach home
-- [ ] Animated token movement visible to all players
+- [x] All 4 player colors render on board correctly
+- [x] Dice rolls are server-generated (not client)
+- [x] Token captures work correctly
+- [x] Win detected when all 4 tokens reach home
+- [x] Moveable tokens and turn state are visible to all players
 
 ---
 
@@ -725,10 +727,10 @@ Draw  Ludo  Sound  PWA  Final QA
 | US-029 | Chess — Check, Checkmate, Draw | M13 | 2 | ✅ |
 | US-030 | Play Emoji Guessing | M14 | 2 | ✅ |
 | US-031 | Emoji Guessing — Scoring & Win | M14 | 2 | ✅ |
-| US-032 | Play Drawing & Guessing Game | M16 | 3 | 🔲 |
-| US-033 | Drawing Game — Scoring & Win | M16 | 3 | 🔲 |
-| US-034 | Play Ludo | M17 | 3 | 🔲 |
-| US-035 | Ludo — Captures & Win | M17 | 3 | 🔲 |
+| US-032 | Play Drawing & Guessing Game | M16 | 3 | ✅ |
+| US-033 | Drawing Game — Scoring & Win | M16 | 3 | ✅ |
+| US-034 | Play Ludo | M17 | 3 | ✅ |
+| US-035 | Ludo — Captures & Win | M17 | 3 | ✅ |
 | US-036 | Sound Effects & Music | M18 | 3 | 🔲 |
 | US-037 | Mobile Responsive Layout | M19 | 3 | 🔲 |
 | US-038 | Install as PWA | M19 | 3 | 🔲 |

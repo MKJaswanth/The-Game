@@ -163,8 +163,12 @@ function beginRound(io, game) {
     `[Emoji] Room ${game.roomCode} round ${game.round + 1}/${game.totalRounds} — clue-giver ${game.clueGiver} (${game.answer.a})`
   );
 
-  sendAnswerToClueGiver(io, game);
   broadcast(io, game);
+  // Publish the new clue phase before the private answer. This preserves event
+  // order for clients: the public state clears any previous reveal first, then
+  // only the drawer receives the secret word. A next-turn tick also gives every
+  // room socket a chance to process the public state before the private event.
+  setTimeout(() => sendAnswerToClueGiver(io, game), 0);
   startTimer(io, game);
 }
 
@@ -406,7 +410,7 @@ export function registerEmojiHandlers(io, socket) {
     }
     if (typeof callback === 'function') callback({ success: true });
     broadcast(io, game);
-    if (game.phase === 'clue') sendAnswerToClueGiver(io, game);
+    if (game.phase === 'clue') setTimeout(() => sendAnswerToClueGiver(io, game), 0);
   });
 
   socket.on('emoji:clue', ({ roomCode, clue }, callback) => {

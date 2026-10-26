@@ -10,12 +10,14 @@ A real-time multiplayer gaming hub built for teams and friends. Pick a nickname,
 2. **🔤 Word Scramble:** Real-time multiplayer word-unscrambling race featuring 266 words across 3 difficulty tiers, speed bonuses, and a visual 10-round stepper.
 3. **🧠 Trivia Battle:** Fast-paced 10-question quiz battle with Open Trivia DB integration, 60-question fallback bank, 15-second timers, speed bonus scoring, and winner podiums.
 4. **❌⭕ Tic Tac Toe:** 1v1 turn-based tactical duel with instant rematches and a CyberBot opponent.
-5. **🃏 UNO:** Full 108-card deck for 2–6 players — Skips, Reverses, Draw 2, Wilds, Wild +4, forced draw stacks, the UNO! call with a 5-second **Catch!** penalty, and card-point scoring.
+5. **🃏 UNO:** Full 108-card deck for 2–8 players — Skips, Reverses, Draw 2, Wilds, Wild +4, forced draw stacks, the UNO! call with a 5-second **Catch!** penalty, and card-point scoring.
 6. **🐦 Flappy Race:** Server-authoritative 1–4 player survival race. Everyone flies the same pipe course; last bird flying wins and every racer's pipes are saved to the leaderboard.
 7. **♟️ Chess:** Full-rules 1v1 with server-validated moves, legal-move highlighting, check/checkmate detection, draw offers, resign, colour-swapping rematches and a promotion picker.
 8. **🤔 Emoji Guessing:** A party game for 2–8 players — one player turns a secret phrase into emoji, everyone else races to decode it. Five rounds, rotating clue-giver, speed scoring.
+9. **🎨 Draw & Guess:** Real-time shared-canvas party game for 2–8 players with rotating drawers, speed scoring, and five rounds.
+10. **🎲 Ludo:** Server-authoritative 2–4 player board race with dice, four tokens, safe squares, captures, home lanes, and rematches.
 
-All eight games are listed on the landing page and in the hub, each with its player count and live/soon state pulled from a single shared catalog.
+All ten games are listed on the landing page and in the hub, each with its player count and live/soon state pulled from a single shared catalog.
 
 ---
 
@@ -68,9 +70,13 @@ With the backend running, each multiplayer engine has a socket-level suite:
 
 ```bash
 node test-uno.mjs        # UNO
+node test-uno-eight.mjs  # UNO eight-player capacity/privacy boundary
 node test-flappy.mjs     # Flappy Race
-node test-chess.mjs      # Chess (44 assertions)
+node test-chess.mjs      # Chess (46 assertions)
+node test-chess-clock.mjs # Chess inactivity clock (run with CHESS_TURN_MS <= 5000)
 node test-emoji.mjs      # Emoji Guessing (5 full rounds)
+node test-drawing.mjs    # Draw & Guess
+node test-ludo.mjs       # Ludo
 ```
 
 Sparring bots are available for manual UI checks: `chess-bot.mjs <ROOMCODE>` and `emoji-bot.mjs <ROOMCODE>`.

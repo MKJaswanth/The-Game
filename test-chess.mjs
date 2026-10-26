@@ -5,6 +5,9 @@
 import { io } from './client/node_modules/socket.io-client/build/esm/index.js';
 
 const URL = process.env.SERVER_URL || 'http://localhost:4000';
+const RUN_ID = Date.now().toString(36).slice(-6);
+const ALICE = `AliceChess${RUN_ID}`;
+const BOB = `BobChess${RUN_ID}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const await_ = async (fn, label, timeout = 2500) => {
@@ -34,8 +37,8 @@ const ok = (cond, msg) => {
   if (!cond) failures++;
 };
 
-const A = connect('Alice');
-const B = connect('Bob');
+const A = connect(ALICE);
+const B = connect(BOB);
 
 const move = async (sock, from, to, promotion) => {
   const res = await emit(sock, 'chess:move', { roomCode: roomCode, from, to, promotion });
@@ -53,7 +56,7 @@ async function playLine(moves) {
 }
 
 try {
-  const created = await emit(A, 'room:create', { gameType: 'chess', nickname: 'Alice', maxPlayers: 2 });
+  const created = await emit(A, 'room:create', { gameType: 'chess', nickname: ALICE, maxPlayers: 2 });
   ok(created?.success, 'chess room created');
   roomCode = created.roomCode;
 
@@ -62,18 +65,19 @@ try {
   ok(tooEarly?.success === false, `cannot start chess alone (${tooEarly?.error})`);
   ok(!A.state, 'no board is dealt to a one-seat room');
 
-  const joined = await emit(B, 'room:join', { roomCode, nickname: 'Bob' });
+  const joined = await emit(B, 'room:join', { roomCode, nickname: BOB });
   ok(joined?.success, 'second player joined');
 
   await emit(A, 'room:start', { roomCode });
   await await_(() => A.state && B.state, 'initial chess state');
 
   const s0 = A.state;
-  ok(s0.players.w === 'Alice' && s0.players.b === 'Bob', 'host plays white, guest black');
+  ok(s0.players.w === ALICE && s0.players.b === BOB, 'host plays white, guest black');
   ok(s0.status === 'in_game', 'game is live');
   ok(s0.fen === 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 'opens from the standard position');
   ok(Array.isArray(s0.legalMoves?.e2) && s0.legalMoves.e2.length === 2, 'legal moves offered for e2 (e3, e4)');
   ok(s0.inCheck === null, 'nobody is in check');
+  ok(Number.isFinite(s0.turnEndsAt) && s0.turnEndsAt > Date.now(), 'white turn clock starts on the server');
 
   // --- legality + turn ownership -------------------------------------------
   const sideways = await move(A, 'e2', 'e5');
@@ -94,6 +98,7 @@ try {
     ['A', 'd1', 'h5'],
     ['B', 'g8', 'f6'],
   ]);
+  ok(A.state.turnEndsAt > s0.turnEndsAt, 'turn clock resets after a legal move');
   ok(A.state.lastMove?.san === 'Nf6', `last move recorded as SAN (${A.state.lastMove?.san})`);
 
   const mate = await move(A, 'h5', 'f7');
@@ -102,18 +107,18 @@ try {
 
   const s1 = A.state;
   ok(s1.result?.type === 'checkmate', `checkmate detected (${s1.result?.type})`);
-  ok(s1.result?.winner === 'Alice', `white wins (${s1.result?.winner})`);
+  ok(s1.result?.winner === ALICE, `white wins (${s1.result?.winner})`);
   ok(s1.inCheck === 'b', 'black left in check');
   ok(s1.legalMoves && Object.keys(s1.legalMoves).length === 0, 'no legal moves offered after mate');
   ok(s1.history[s1.history.length - 1] === 'Qxf7#', `mate logged in SAN (${s1.history[s1.history.length - 1]})`);
-  ok(B.state.result?.winner === 'Alice', 'both clients agree on the result');
+  ok(B.state.result?.winner === ALICE, 'both clients agree on the result');
 
   // --- score persistence ---------------------------------------------------
   await wait(500);
   const board = await (await fetch(`${URL}/api/leaderboard/chess`)).json();
   const rows = board.leaderboard || [];
-  ok(rows.some((r) => r.nickname === 'Alice' && r.won === true), 'winner persisted to the leaderboard');
-  ok(rows.some((r) => r.nickname === 'Bob' && r.won === false), 'loser recorded');
+  ok(rows.some((r) => r.nickname === ALICE && r.won === true), 'winner persisted to the leaderboard');
+  ok(rows.some((r) => r.nickname === BOB && r.won === false), 'loser recorded');
 
   // --- rematch (both must agree, colours swap) -----------------------------
   const half = await emit(A, 'chess:rematch', { roomCode });
@@ -123,7 +128,7 @@ try {
   await await_(() => A.state.status === 'in_game' && A.state.moveCount === 0, 'fresh rematch');
 
   const s2 = A.state;
-  ok(s2.players.w === 'Bob' && s2.players.b === 'Alice', 'colours swap on rematch');
+  ok(s2.players.w === BOB && s2.players.b === ALICE, 'colours swap on rematch');
   ok(s2.fen.endsWith('w KQkq - 0 1'), 'board resets');
 
   // --- castling ------------------------------------------------------------
@@ -141,10 +146,10 @@ try {
   ok(A.state.fen.includes('RK1'), `king and rook actually moved (${A.state.fen.split(' ')[0]})`);
 
   // --- draw offer flow -----------------------------------------------------
-  // Bob is white in this game, Alice black.
+  // The guest is white in this game, the host is black.
   const offer = await emit(B, 'chess:draw:offer', { roomCode });
   ok(offer.success, 'white can offer a draw');
-  await await_(() => A.state.drawOffer === 'Bob', 'offer broadcast');
+  await await_(() => A.state.drawOffer === BOB, 'offer broadcast');
 
   const decline = await emit(A, 'chess:draw:respond', { roomCode, accept: false });
   ok(decline.success && !decline.accepted, 'opponent can decline');
@@ -153,7 +158,7 @@ try {
 
   const offer2 = await emit(B, 'chess:draw:offer', { roomCode });
   ok(offer2.success, 'second offer allowed');
-  await await_(() => A.state.drawOffer === 'Bob', 'second offer broadcast');
+  await await_(() => A.state.drawOffer === BOB, 'second offer broadcast');
 
   const selfAnswer = await emit(B, 'chess:draw:respond', { roomCode, accept: true });
   ok(!selfAnswer.success, 'offerer cannot answer their own offer');
@@ -169,19 +174,19 @@ try {
   await emit(B, 'chess:rematch', { roomCode });
   await await_(() => A.state.status === 'in_game' && A.state.moveCount === 0, 'third game');
 
-  ok(A.state.players.w === 'Alice', 'third game: Alice white again (alternating)');
+  ok(A.state.players.w === ALICE, 'third game: host white again (alternating)');
   const resign = await emit(B, 'chess:resign', { roomCode });
   ok(resign.success, 'black can resign');
   await await_(() => A.state.status === 'finished', 'resign finished state');
   ok(A.state.result?.type === 'resign', `resign recorded (${A.state.result?.type})`);
-  ok(A.state.result?.winner === 'Alice', 'opponent wins on resignation');
+  ok(A.state.result?.winner === ALICE, 'opponent wins on resignation');
 
   // --- promotion (fresh room so white starts again) ------------------------
-  const created2 = await emit(A, 'room:create', { gameType: 'chess', nickname: 'Alice', maxPlayers: 2 });
+  const created2 = await emit(A, 'room:create', { gameType: 'chess', nickname: ALICE, maxPlayers: 2 });
   roomCode = created2.roomCode;
   A.state = null;
   B.state = null;
-  await emit(B, 'room:join', { roomCode, nickname: 'Bob' });
+  await emit(B, 'room:join', { roomCode, nickname: BOB });
   await emit(A, 'room:start', { roomCode });
   await await_(() => A.state && A.state.moveCount === 0 && A.state.status === 'in_game', 'promotion room ready');
 

@@ -21,10 +21,11 @@ export default function ChatPanel({ socket, roomCode, currentNick, isVisible }) 
   // Fetch history on mount
   useEffect(() => {
     if (!socket || !roomCode) return;
-    socket.emit('chat:history', { roomCode }, (res) => {
+    socket.timeout(5000).emit('chat:history', { roomCode }, (err, res) => {
       if (res?.success && Array.isArray(res.messages)) {
         setMessages(res.messages);
       }
+      if (err) setSendError('Chat history timed out. Try opening chat again.');
     });
   }, [socket, roomCode]);
 
@@ -56,7 +57,11 @@ export default function ChatPanel({ socket, roomCode, currentNick, isVisible }) 
     }
     setSendError('');
 
-    socket.emit('chat:message', { roomCode, message: text }, (res) => {
+    socket.timeout(5000).emit('chat:message', { roomCode, message: text }, (err, res) => {
+      if (err) {
+        setSendError('Message timed out. Please try again.');
+        return;
+      }
       if (!res?.success) {
         setSendError(res?.error || 'Failed to send');
       }

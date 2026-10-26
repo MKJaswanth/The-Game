@@ -7,7 +7,7 @@
 
 ## 🔄 Doing
 
-*Nothing in progress — M12 is complete; M13 (Chess) is next.*
+*M15 is in progress — Supabase wiring is intentionally deferred while local production hardening continues.*
 
 ---
 
@@ -185,6 +185,8 @@
 | M11-16 | Server: classic draw-then-play rule + explicit `uno:pass` action | M11 | 2026-10-23 |
 | M11-17 | Client: turn countdown bar, no-playable-card hint, drawn-card banner with pass link | M11 | 2026-10-23 |
 | M11-18 | Client: table action feed (plays, skips, UNO calls, penalties) + UNO badge in the rail | M11 | 2026-10-23 |
+| M11-19 | Expand UNO capacity to 2–8 players, update catalog/rules copy, and add eight-seat boundary coverage | M11 | 2026-10-26 |
+| M11-20 | Add responsive UNO table route showing current turn, next player, direction, seat order, card counts, and YOU/AFTER YOU markers | M11 | 2026-10-26 |
 | M12-01 | Server-authoritative Flappy flight model (gravity, flap, ground/ceiling) | M12 | 2026-10-21 |
 | M12-02 | Pipe course generation, gap tuning, scroll ramp | M12 | 2026-10-21 |
 | M12-03 | Collision detection — pipe columns and ground | M12 | 2026-10-21 |
@@ -231,3 +233,13 @@
 | M15-10 | Update the leaderboard assertions for best-score rows; fix the 390–430 px navbar clipping and the room-lobby 8 px mobile overflow | M15 | 2026-10-26 |
 | M15-11 | Clear UNO's rematch busy flag when the next round starts, and give the open-room join ack a 5 s deadline | M15 | 2026-10-26 |
 | M15-12 | Enable score persistence in production (Supabase schema + Render env vars); live leaderboard is currently in-memory and empty after every deploy | M15 | 2026-10-26 |
+| M16-01 | Add Draw & Guess server engine, private drawer word, live strokes, guess scoring, five rounds, rematch, and score persistence | M16 | 2026-10-26 |
+| M16-02 | Add Draw & Guess canvas UI with brush, colors, eraser, clear, timer, blanks, feed, scoreboard, and mobile layout | M16 | 2026-10-26 |
+| M17-01 | Add Ludo server engine with server dice, token movement, safe squares, captures, home lanes, win, rematch, and score persistence | M17 | 2026-10-26 |
+| M17-02 | Add responsive Ludo board UI with bases, track, tokens, move highlights, turn HUD, scoreboard, and results | M17 | 2026-10-26 |
+| M19-01 | Fix leaderboard mobile game-name wrapping and preserve readable score/player columns at 360–640px | M19 | 2026-10-26 |
+| M15-13 | Add five-second client ack deadlines for room create/join/resume/start and chat actions | M15 | 2026-10-26 |
+| M15-14 | Add a server-authoritative Chess per-turn inactivity clock with timeout result and client countdown | M15 | 2026-10-26 |
+| M15-15 | Add Chess clock regression coverage and extend the core Chess suite with deadline assertions | M15 | 2026-10-26 |
+| M19-02 | Add PWA manifest, theme metadata, installable icon, and standalone launch configuration | M19 | 2026-10-26 |
+| M19-03 | Add production service-worker caching with an offline fallback page | M19 | 2026-10-26 |

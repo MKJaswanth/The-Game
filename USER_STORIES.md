@@ -13,7 +13,7 @@
 
 ### US-001 — Enter a Nickname
 
-**Status:** ✅ Done  
+**Status:** ✅ Done
 **Priority:** 🔴 Must Have
 
 > As a **teammate**, I want to enter a nickname and join the hub without creating an account, so that I can start playing immediately without friction.
@@ -32,7 +32,7 @@
 
 ### US-002 — Rejoin with Saved Nickname
 
-**Status:** ✅ Done  
+**Status:** ✅ Done
 **Priority:** 🟡 Should Have
 
 > As a **returning teammate**, I want my nickname to be remembered when I revisit the site, so that I don't have to type it every time.
@@ -47,7 +47,7 @@
 
 ### US-003 — Leave the Hub
 
-**Status:** ✅ Done  
+**Status:** ✅ Done
 **Priority:** 🔴 Must Have
 
 > As a **player**, I want to be automatically removed from the online list when I close the tab, so that the lobby always shows accurate presence.
@@ -66,7 +66,7 @@
 
 ### US-004 — Browse Available Games
 
-**Status:** ✅ Done  
+**Status:** ✅ Done
 **Priority:** 🔴 Must Have
 
 > As a **player**, I want to see all available games on the hub, so that I can pick one to play.
@@ -458,11 +458,11 @@
 **Status:** ✅ Done  
 **Priority:** 🔴 Must Have
 
-> As a **player**, I want to play a full game of UNO with 2–6 friends in a room, so that we can enjoy a classic card battle in real time.
+> As a **player**, I want to play a full game of UNO with 2–8 friends in a room, so that we can enjoy a polished card battle in real time.
 
 **Acceptance Criteria:**
 
-- [x] UNO room supports 2–6 players with host controls and Start Game gating
+- [x] UNO room supports 2–8 players with host controls and Start Game gating
 - [x] Every player is dealt 7 cards from a shuffled 108-card deck (4 colors × numbers/Skip/Reverse/+2, plus Wild and Wild +4)
 - [x] A non-wild card is flipped as the starting discard pile
 - [x] Turn order rotates with the current player clearly highlighted; out-of-turn plays are rejected server-side
@@ -470,6 +470,8 @@
 - [x] "Draw" button pulls one card from the deck and passes the turn; deck reshuffles from the discard pile when empty
 - [x] Each player's hand stays private — only own cards are visible to that player
 - [x] Opponents are shown as face-down card stacks with live card counts
+- [x] An eight-player room keeps every hand private while the opponent rail remains usable on desktop and mobile
+- [x] A visible turn-order table shows the current player, the next player, direction, seat order, card counts, and the player after the current player
 
 ---
 
@@ -608,6 +610,83 @@
 
 ---
 
+## 🎨 Epic 14: Drawing & Guessing Game
+
+---
+
+### US-032 — Play a Drawing & Guessing Round
+
+**Status:** ✅ Done
+**Priority:** 🟡 Should Have
+
+> As a **player**, I want one teammate to draw a secret word while the rest of us guess, so that we can play a fast collaborative party game.
+
+**Acceptance Criteria:**
+
+- [x] Drawing rooms hold 2–8 players and the host starts once at least two seats are filled
+- [x] The server assigns one drawer per round and sends the secret word only to that drawer
+- [x] The drawer can draw with a brush, choose colors, erase, and clear the shared canvas
+- [x] Drawing strokes are broadcast in real time and late joiners can request the current canvas
+- [x] Guessers see answer blanks, a guess input, and a live public guess feed
+- [x] The drawer cannot submit guesses for their own round
+
+---
+
+### US-033 — Drawing Scores, Rounds & Winner
+
+**Status:** ✅ Done
+**Priority:** 🟡 Should Have
+
+> As a **player**, I want fast correct guesses to earn more points and the drawer to receive a bonus, so that five rounds end with a clear winner.
+
+**Acceptance Criteria:**
+
+- [x] Correct guesses award speed-scaled points and the drawer earns a clue bonus
+- [x] Wrong guesses appear publicly without revealing the answer
+- [x] Each round lasts 80 seconds and reveals the answer before the next round
+- [x] Five rounds rotate the drawer through the room
+- [x] The final screen ranks players, names the winner, supports rematch voting, and saves scores
+
+---
+
+## 🎲 Epic 15: Ludo Board Game
+
+---
+
+### US-034 — Play Ludo
+
+**Status:** ✅ Done
+**Priority:** 🟡 Should Have
+
+> As a **player**, I want to roll dice and move four tokens around a shared Ludo board, so that I can race my teammates to the home area.
+
+**Acceptance Criteria:**
+
+- [x] Ludo rooms support 2–4 players with each player assigned a color and four tokens
+- [x] Dice rolls are generated and validated by the server
+- [x] A player can roll only on their turn and can move only a legal token
+- [x] Rolling a six releases a token from base and grants another roll after a valid move
+- [x] The board shows each player's tokens, current turn, dice result, and legal move highlights
+
+---
+
+### US-035 — Ludo Captures, Win & Rematch
+
+**Status:** ✅ Done
+**Priority:** 🟡 Should Have
+
+> As a **player**, I want captures, safe squares, and a clear finish state, so that the Ludo match feels complete and competitive.
+
+**Acceptance Criteria:**
+
+- [x] Tokens landing on an unsafe occupied square capture the opponent and send that token to base
+- [x] Safe squares prevent captures
+- [x] Tokens cannot overshoot the final home space
+- [x] The first player to bring all four tokens home wins and scores are saved
+- [x] The final screen shows standings and supports a full-room rematch
+
+---
+
 ## 📝 Story Status Summary
 
 | Epic                 | Total Stories | Done   | In Progress | Not Started |
@@ -625,7 +704,9 @@
 | 11 — Flappy Race     | 1             | 1      | 0           | 0           |
 | 12 — Chess           | 2             | 2      | 0           | 0           |
 | 13 — Emoji Guessing  | 2             | 2      | 0           | 0           |
-| **Total**            | **29**        | **29** | **0**       | **0**       |
+| 14 — Drawing         | 2             | 2      | 0           | 0           |
+| 15 — Ludo            | 2             | 2      | 0           | 0           |
+| **Total**            | **33**        | **33** | **0**       | **0**       |
 
 ---
 

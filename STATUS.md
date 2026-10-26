@@ -7,10 +7,10 @@
 
 ## 🟡 Current State
 
-**Phase:** Phase 2 — Growth  
-**Active Milestone:** M14 Complete — Emoji Guessing  
-**Last Updated:** 2026-10-24  
-**Overall Progress:** Milestones 0–14 Complete (15 / 20 Milestones — 75%)  
+**Phase:** Phase 3 — Advanced & Polish
+**Active Milestone:** M17 Complete — Ludo
+**Last Updated:** 2026-10-26
+**Overall Progress:** Milestones 0–17 Complete (18 / 20 Milestones — 90%)
 **Live LAN Hosting:**  
 - 📱 Frontend: `http://192.168.0.110:5173/` (Playable on any phone/device on Wi-Fi)  
 - ⚙️ Backend: `http://192.168.0.110:4000/` (Socket.IO + REST on 0.0.0.0)
@@ -36,7 +36,7 @@
 - Server `socket/games/chess.js`: `chess.js` owns the rules; the engine owns seats, turn order, check resolution and results. Every move is re-validated server-side, snapshots ship FEN + the legal-move map for the side to move, and checkmate/stalemate/threefold/insufficient-material/fifty-move are all detected
 - Client `games/chess/Chess.jsx` + `chess.css`: wood-board grid with Unicode pieces, colour-aware orientation, legal-move dots and capture rings, check pulse, captured trays, SAN move list, promotion picker, draw offer + accept/decline, resign confirmation, result panel with colour-swapping rematch
 - Wiring: capacity `2–2`, handlers in `socket/index.js`, hub card enabled, Room route + rules banner, leaderboard tab, profile label, card meta
-- Verified with a 44-assertion two-player Socket.IO suite (`test-chess.mjs`) — illegal and out-of-turn rejection, Scholar's mate, under-promotion, castling, draw offer/decline/accept, resign, colours alternating across rematches, leaderboard persistence — plus a browser match against `chess-bot.mjs` that ended in a real checkmate through the UI
+- Verified with a 46-assertion two-player Socket.IO suite (`test-chess.mjs`) — illegal and out-of-turn rejection, Scholar's mate, under-promotion, castling, draw offer/decline/accept, resign, colours alternating across rematches, leaderboard persistence, and turn-deadline assertions — plus `test-chess-clock.mjs` for timeout completion and a browser match against `chess-bot.mjs` that ended in a real checkmate through the UI
 
 **M14 Complete — Emoji Guessing (US-030, US-031).**
 - Data `data/emojiAnswers.json`: 114 authored answers across movies, food, animals, nature, places, objects, phrases and everyday things, each with a ready-made emoji hint and category
@@ -65,11 +65,17 @@
 - **Open-room Join could hang on "Joining…" (2026-10-26):** socket.io acknowledgements have no deadline. The hub now uses `socket.timeout(5000)` and restores every room button with a retry message; verified on the happy path (room appeared → joined → 2/2 → listing disappeared) and that a timed-out ack returns an `err`
 - **Production has no Supabase configured (2026-10-26):** `/health/db` on the live origin returns `configured:false`, every live leaderboard is empty, and yesterday's `ProdCheck`/`LiveTester`/`QuizHost` rows are gone after the latest deploy. Scores are in-memory only, so each restart wipes the leaderboard and profiles. Fix is operational: create the Supabase project, run `server/src/db/schema.sql`, then set `SUPABASE_URL` + `SUPABASE_ANON_KEY` on Render
 - **Latent, once Supabase is on:** the global-leaderboard branch returns `created_at` as `playedAt`, but the table header says "Last Active"; either query the latest `scores.played_at` per player or relabel that column when the DB path is enabled
-- **Still ack-only:** the hub's create-room, quick-join and join-with-code handlers still have no ack deadline (the open-room path is fixed), so a lost ack can leave the modal disabled
+- **Room action acknowledgements (2026-10-26):** create-room, quick-join, join-with-code, room resume/start, and chat history/send now use five-second Socket.IO ack deadlines with recoverable error messages instead of leaving controls spinning forever
+- **UNO eight-seat upgrade (2026-10-26):** the catalog, room-capacity map, lobby rules copy, documentation, and new `test-uno-eight.mjs` now support and verify 2–8 players. The existing private-hand, server-authoritative turn, draw-stack, UNO/Catch!, rematch, and scoring flows remain unchanged.
+- **UNO turn-order table (2026-10-26):** `Uno.jsx` and `uno.css` now replace the compact opponent rail with a scrollable table route: current seat, direction, every player in order, next player, card counts, UNO badges, and YOU/AFTER YOU markers are visible for 2–8 seats.
+- **M16/M17 complete (2026-10-26):** Draw & Guess and Ludo are now wired into the room catalog, server socket registry, room capacities, client routes, score persistence, rematches, and focused socket smoke tests. The leaderboard now includes both game filters and wraps long game names cleanly on mobile.
+- **Emoji event ordering fix (2026-10-26):** public clue-phase state now reaches room sockets before the private answer event, avoiding stale revealed answers during the next round; `test-emoji.mjs` is green.
+- **Chess inactivity clock (2026-10-26):** every turn now has a server-authoritative 60-second deadline (`CHESS_TURN_MS` overrides it for tests); timeout awards the game to the opponent, clears the timer, broadcasts the result, and persists the normal win/loss scores. The client shows a live countdown with an urgent final-ten-second state. Verified by `test-chess.mjs` and `test-chess-clock.mjs`.
+- **PWA shell (2026-10-26):** the client now ships a manifest, theme metadata, installable SVG icon, service-worker shell caching, and a friendly offline fallback page. The worker only registers in production builds so local Vite development remains unchanged.
 
-**Next Up:** M15 — Phase 2 QA & Deploy Update (US-022–031 regression pass)
+**Next Up:** M15 — Phase 2 QA & Deploy Update (US-022–031 regression pass; Supabase wiring intentionally deferred)
 
-> Suite baseline: `test-chess`, `test-emoji`, `test-quiz-games`, `test-reconnect`, `test-uno`, `test-uno-turns`, `test-flappy`, `test-room-browser` and `test-leaderboard-aggregation` are green locally (the first eight against a server with shortened grace/turn windows; the aggregation test spins its own in-process app). The socket/REST suites have also been green against the deployed origin via `SERVER_URL`.
+> Suite baseline: `test-room-browser`, `test-room-access`, `test-chess`, `test-chess-clock`, `test-emoji`, `test-drawing`, `test-ludo`, `test-quiz-games`, `test-reconnect`, `test-uno`, `test-uno-turns`, `test-uno-eight`, `test-flappy` and `test-leaderboard-aggregation` are green locally. Reconnect and clock tests were run against short-lived servers with `RECONNECT_GRACE_MS`/`CHESS_TURN_MS` overrides; the aggregation test spins its own in-process app.
 
 ---
 
@@ -169,8 +175,8 @@
 | M13 | Chess | ✅ Completed | 2026-10-21 |
 | M14 | Emoji Guessing | ✅ Completed | 2026-10-21 |
 | M15 | Phase 2 QA & Deploy | 🔲 Not Started | — |
-| M16 | Drawing & Guessing Game | 🔲 Not Started | — |
-| M17 | Ludo | 🔲 Not Started | — |
+| M16 | Drawing & Guessing Game | ✅ Completed | 2026-10-26 |
+| M17 | Ludo | ✅ Completed | 2026-10-26 |
 | M18 | Sound Effects & Music | 🔲 Not Started | — |
 | M19 | Mobile & PWA | 🔲 Not Started | — |
 | M20 | Final QA & Production Polish | 🔲 Not Started | — |

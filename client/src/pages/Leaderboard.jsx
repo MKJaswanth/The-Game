@@ -14,7 +14,9 @@ const TABS = [
   { id: 'uno', label: 'UNO', title: 'UNO' },
   { id: 'flappy', label: 'Flappy Race', title: 'Flappy Race' },
   { id: 'chess', label: 'Chess', title: 'Chess' },
-  { id: 'emoji', label: 'Emoji', title: 'Emoji Guessing' }
+  { id: 'emoji', label: 'Emoji', title: 'Emoji Guessing' },
+  { id: 'drawing', label: 'Draw & Guess', title: 'Draw & Guess' },
+  { id: 'ludo', label: 'Ludo', title: 'Ludo' }
 ];
 
 const GAME_INFO = {
@@ -25,7 +27,9 @@ const GAME_INFO = {
   uno: { title: 'UNO' },
   flappy: { title: 'Flappy Race' },
   chess: { title: 'Chess' },
-  emoji: { title: 'Emoji Guessing' }
+  emoji: { title: 'Emoji Guessing' },
+  drawing: { title: 'Draw & Guess' },
+  ludo: { title: 'Ludo' }
 };
 
 function formatDate(dateStr) {
