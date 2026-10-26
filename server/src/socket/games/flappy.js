@@ -110,7 +110,9 @@ export function startFlappyGame(io, roomCode) {
   const room = getRoom(code);
   if (!room) return null;
 
-  const players = room.players.map((p) => p.nickname);
+  const players = room.players
+    .filter((p) => p.connected !== false)
+    .map((p) => p.nickname);
   if (players.length === 0) return null;
 
   // Tear the previous race down silently. Passing `io` here broadcasts
@@ -363,8 +365,21 @@ export function rematchFlappy(io, roomCode, nickname) {
   }
   if (game.status !== 'finished') return { success: false, error: 'The race is still running.' };
 
+  const room = getRoom(roomCode);
+  const eligiblePlayers = room?.players
+    .filter((p) => p.connected !== false && game.players.includes(p.nickname))
+    .map((p) => p.nickname) || [];
+  if (!eligiblePlayers.includes(nickname)) {
+    return { success: false, error: 'You are not an active racer for this rematch.' };
+  }
+
+  // A player can leave after the results screen. Do not let a disconnected
+  // seat keep the remaining racers waiting forever for a vote.
+  game.rematchVotes = new Set(
+    [...game.rematchVotes].filter((player) => eligiblePlayers.includes(player))
+  );
   game.rematchVotes.add(nickname);
-  const needed = Math.max(1, game.players.length);
+  const needed = Math.max(1, eligiblePlayers.length);
   if (game.rematchVotes.size >= needed) {
     startFlappyGame(io, roomCode);
     return { success: true, restarted: true };
@@ -380,7 +395,14 @@ export function rematchFlappy(io, roomCode, nickname) {
 export function handleFlappyPlayerLeave(io, roomCode, nickname) {
   const game = getFlappyGame(roomCode);
   if (!game) return;
-  if (game.status === 'finished') return;
+
+  if (game.status === 'finished') {
+    game.players = game.players.filter((player) => player !== nickname);
+    delete game.birds[nickname];
+    game.rematchVotes.delete(nickname);
+    if (game.players.length === 0) stopFlappyGame(roomCode);
+    return;
+  }
 
   const bird = game.birds[nickname];
   if (bird && bird.alive) {

@@ -215,6 +215,26 @@ try {
   const saved = (lb.leaderboard || []).some((row) => row.nickname === 'Flyer');
   ok(saved, 'race scores reach the flappy leaderboard');
 
+  // Multiplayer Race Again needs both active racers once, then must not be
+  // held hostage by a player who leaves from the results screen.
+  const multiplayerRematchState = waitForStatus(A, ['countdown', 'racing'], 8000);
+  const firstVote = await emit(A, 'flappy:rematch', { roomCode });
+  ok(firstVote?.waiting && firstVote.needed === 2, 'multiplayer rematch waits for both racers');
+  const secondVote = await emit(B, 'flappy:rematch', { roomCode });
+  ok(secondVote?.success && secondVote.restarted === true, 'second racer starts the rematch');
+  ok(Boolean(await multiplayerRematchState), 'multiplayer rematch opens a fresh course');
+
+  const secondRaceEnd = waitFor(A, 'flappy:end', 15000);
+  const endedAgain = await secondRaceEnd;
+  ok(Boolean(endedAgain), 'rematch race reaches a results screen');
+  B.close();
+  await wait(300);
+  const soloRematchState = waitForStatus(A, ['countdown', 'racing'], 8000);
+  const afterLeave = await emit(A, 'flappy:rematch', { roomCode });
+  ok(afterLeave?.success && afterLeave.restarted === true, 'remaining racer can rematch after an opponent leaves');
+  const afterLeaveState = await soloRematchState;
+  ok(afterLeaveState?.status === 'countdown' || afterLeaveState?.status === 'racing', 'post-leave rematch starts without the absent racer');
+
   // solo room auto-starts
   const solo = client('SoloBird');
   const soloCreated = await emit(solo, 'room:create', { gameType: 'flappy', nickname: 'SoloBird', isSolo: true });

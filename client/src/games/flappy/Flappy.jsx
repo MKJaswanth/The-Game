@@ -38,7 +38,77 @@ function stepPredictedBird(bird, now) {
 
 /* ---------- canvas painting ---------- */
 
-function drawBackdrop(ctx, worldX) {
+function createBackdropTile() {
+  const tile = document.createElement('canvas');
+  tile.width = W * 2;
+  tile.height = H;
+  const ctx = tile.getContext('2d');
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#0a0f22');
+  sky.addColorStop(0.55, '#141033');
+  sky.addColorStop(1, '#1b1440');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, tile.width, H);
+
+  // Stars are static artwork; render them once instead of rebuilding 44 arcs
+  // and a gradient on every animation frame.
+  for (let i = 0; i < 88; i += 1) {
+    const seed = i * 97.31;
+    const x = (seed * 13.7) % tile.width;
+    const y = 24 + ((seed * 7.13) % (H - GROUND_H - 80));
+    const r = i % 7 === 0 ? 1.7 : 1;
+    ctx.globalAlpha = 0.14 + ((i % 5) * 0.05);
+    ctx.fillStyle = '#c7d2fe';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  return tile;
+}
+
+function createGroundTile() {
+  const tile = document.createElement('canvas');
+  tile.width = W;
+  tile.height = GROUND_H;
+  const ctx = tile.getContext('2d');
+  const ground = ctx.createLinearGradient(0, 0, 0, GROUND_H);
+  ground.addColorStop(0, '#241a4d');
+  ground.addColorStop(1, '#120d2b');
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, W, GROUND_H);
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.55)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 1);
+  ctx.lineTo(W, 1);
+  ctx.stroke();
+  return tile;
+}
+
+function drawBackdrop(ctx, worldX, tile) {
+  if (!tile) return;
+  const offset = ((worldX * 0.06) % tile.width + tile.width) % tile.width;
+  ctx.drawImage(tile, -offset, 0);
+  ctx.drawImage(tile, tile.width - offset, 0);
+}
+
+function drawGround(ctx, speed, tile) {
+  if (tile) ctx.drawImage(tile, 0, H - GROUND_H);
+
+  // Dashes are the only moving part of the ground; keep this small loop per
+  // frame while the expensive gradient work stays cached in `tile`.
+  ctx.fillStyle = 'rgba(167, 139, 250, 0.18)';
+  const offset = (performance.now() / 1000) * speed;
+  for (let x = -((offset * 0.25) % 40); x < W; x += 40) {
+    ctx.fillRect(x, H - GROUND_H + 12, 18, 4);
+  }
+}
+
+/* Previous backdrop/ground implementation kept here conceptually through the
+ * cached tiles above; the renderer still receives the same logical pixels. */
+/* istanbul ignore next */
+function drawBackdropLegacy(ctx, worldX) {
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, '#0a0f22');
   sky.addColorStop(0.55, '#141033');
@@ -59,28 +129,6 @@ function drawBackdrop(ctx, worldX) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-}
-
-function drawGround(ctx, speed) {
-  const g = ctx.createLinearGradient(0, H - GROUND_H, 0, H);
-  g.addColorStop(0, '#241a4d');
-  g.addColorStop(1, '#120d2b');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
-
-  ctx.strokeStyle = 'rgba(34, 211, 238, 0.55)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, H - GROUND_H + 1);
-  ctx.lineTo(W, H - GROUND_H + 1);
-  ctx.stroke();
-
-  // dashes scrolling with the course speed hint
-  ctx.fillStyle = 'rgba(167, 139, 250, 0.18)';
-  const offset = (performance.now() / 1000) * speed;
-  for (let x = -((offset * 0.25) % 40); x < W; x += 40) {
-    ctx.fillRect(x, H - GROUND_H + 12, 18, 4);
-  }
 }
 
 function drawPipePair(ctx, x, gapY, gapH) {
@@ -208,6 +256,7 @@ export default function Flappy({ roomCode, onExit }) {
   const [latest, setLatest] = useState(null);
   const [toast, setToast] = useState('');
   const [voteText, setVoteText] = useState('');
+  const [rematchBusy, setRematchBusy] = useState(false);
   const toastTimer = useRef(null);
   const predictedMine = useRef(null);
   const lastFlapAt = useRef(0);
@@ -222,6 +271,10 @@ export default function Flappy({ roomCode, onExit }) {
   useEffect(() => {
     const onState = (snap) => {
       if (!snap || snap.roomCode !== roomCode) return;
+      if (snap.status !== 'finished') {
+        setRematchBusy(false);
+        setVoteText('');
+      }
       const mine = snap.birds?.find((bird) => bird.nickname === nickname);
       const now = performance.now();
       const prediction = predictedMine.current;
@@ -438,10 +491,20 @@ export default function Flappy({ roomCode, onExit }) {
   }, [doFlap]);
 
   const doRematch = () => {
-    s.emit('flappy:rematch', { roomCode }, (res) => {
-      if (res && !res.success) showToast(res.error || 'Could not restart the race.');
-      else if (res?.waiting) setVoteText(`Waiting for ${res.needed - res.votes} more racer(s)…`);
-      else setVoteText('');
+    if (rematchBusy) return;
+    setRematchBusy(true);
+    s.timeout(5000).emit('flappy:rematch', { roomCode }, (err, res) => {
+      if (err) {
+        setRematchBusy(false);
+        showToast('Race restart timed out. Try again.');
+      } else if (res && !res.success) {
+        setRematchBusy(false);
+        showToast(res.error || 'Could not restart the race.');
+      } else if (res?.waiting) {
+        setVoteText(`Waiting for ${res.needed - res.votes} more racer(s)…`);
+      } else {
+        setVoteText('');
+      }
     });
   };
 
@@ -471,7 +534,9 @@ export default function Flappy({ roomCode, onExit }) {
             ))}
           </div>
           <div className="fl-final-actions">
-            <button type="button" className="btn btn-primary" onClick={doRematch}>Race Again</button>
+            <button type="button" className="btn btn-primary" onClick={doRematch} disabled={rematchBusy}>
+              {rematchBusy ? 'Waiting…' : 'Race Again'}
+            </button>
             <button type="button" className="btn btn-ghost" onClick={onExit}>Back to Lobby</button>
           </div>
           {voteText && <div className="fl-vote mono">{voteText}</div>}

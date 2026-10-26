@@ -13,7 +13,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    server: { proxy },
-    preview: { proxy },
+    server: {
+      proxy,
+      allowedHosts: true,
+    },
+    preview: {
+      proxy,
+      allowedHosts: true,
+    },
   }
 })
