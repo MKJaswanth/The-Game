@@ -91,8 +91,17 @@ export default function Uno({ roomCode, onExit }) {
   }, []);
 
   useEffect(() => {
-    const onSession = (s) => setGame(s);
-    const onState = (s) => setPubState(s); // public state — spectators use this
+    // The Uno component stays mounted across rematches, so the rematch button
+    // has to clear its busy flag when the next round actually begins —
+    // otherwise it stays disabled on "Starting…" for every later round.
+    const onSession = (s) => {
+      setGame(s);
+      if (s?.status === 'in_game') setRematchBusy(false);
+    };
+    const onState = (s) => {
+      setPubState(s); // public state — spectators use this
+      if (s?.status === 'in_game') setRematchBusy(false);
+    };
 
     socket.on('uno:session', onSession);
     socket.on('uno:state', onState);
@@ -228,9 +237,9 @@ export default function Uno({ roomCode, onExit }) {
     if (rematchBusy) return;
     setRematchBusy(true);
     socket.emit('uno:rematch', { roomCode }, (res) => {
-      if (res && !res.success) {
+      if (!res || !res.success) {
         setRematchBusy(false);
-        showToast(res.error || 'Could not restart.');
+        showToast(res?.error || 'Could not restart.');
       }
     });
   };

@@ -519,8 +519,12 @@ const roomStyles = (
       .rbar-player { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .rbar-right { flex: 1 1 auto; justify-content: flex-end; }
       .rcode-block { padding-inline: var(--s3); }
-      .rplayers-grid { grid-template-columns: 1fr 1fr; }
-      .rlobby-cols { grid-template-columns: 1fr; }
+      /* minmax(0, 1fr) instead of 1fr: a bare fr track cannot shrink below
+         the player card's min-content width, so two long callsigns pushed the
+         whole lobby 8 px past a 390 px viewport. */
+      .rplayers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rlobby-cols { grid-template-columns: minmax(0, 1fr); }
+      .rlobby-main, .rlobby-chat { min-width: 0; }
       .rlobby-chat { height: 320px; }
       .ractions { flex-direction: column-reverse; align-items: stretch; }
       .rstart { width: 100%; justify-content: center; }

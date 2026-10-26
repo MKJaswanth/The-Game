@@ -225,3 +225,9 @@
 | M15-04 | Browser-verify the remaining two games on the deployed origin — Snake solo (start, eat, game over, score persisted) and Emoji Guessing with a scripted bot (composer, guess, reveal) | M15 | 2026-10-24 |
 | M15-05 | Fix `joinHub` never resolving when the server does not acknowledge the join (stale `isJoining` read in the timeout) | M15 | 2026-10-24 |
 | M15-06 | Make the suites judge server config instead of fixed timings — Flappy end-listener race, UNO `turnMs` budget, reconnect grace `SKIP` off localhost | M15 | 2026-10-24 |
+| M15-07 | Open-room browser in the hub plus `test-room-browser.mjs` (waiting rooms stream, capacity/host details, one-click join, hiding solo/full/started rooms) | M15 | 2026-10-24 |
+| M15-08 | Aggregate the global leaderboard per player and keep one best-score row per game tab, with `test-leaderboard-aggregation.mjs` | M15 | 2026-10-24 |
+| M15-09 | UNO round/turn tracking, sorted standings with points, and rematch progression (round two starts at turn one) | M15 | 2026-10-24 |
+| M15-10 | Update the leaderboard assertions for best-score rows; fix the 390–430 px navbar clipping and the room-lobby 8 px mobile overflow | M15 | 2026-10-26 |
+| M15-11 | Clear UNO's rematch busy flag when the next round starts, and give the open-room join ack a 5 s deadline | M15 | 2026-10-26 |
+| M15-12 | Enable score persistence in production (Supabase schema + Render env vars); live leaderboard is currently in-memory and empty after every deploy | M15 | 2026-10-26 |

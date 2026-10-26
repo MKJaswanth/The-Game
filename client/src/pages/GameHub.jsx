@@ -101,8 +101,14 @@ export default function GameHub() {
 
     setJoiningRoomCode(code);
     setOpenRoomError('');
-    socket.emit('room:join', { roomCode: code, nickname: currentNick }, (res) => {
+    // socket.io acknowledgements have no deadline of their own: an ack lost on
+    // the wire used to leave every open-room button disabled on "Joining…".
+    socket.timeout(5000).emit('room:join', { roomCode: code, nickname: currentNick }, (err, res) => {
       setJoiningRoomCode('');
+      if (err) {
+        setOpenRoomError('Connection timed out. Please try again.');
+        return;
+      }
       if (res?.success) navigate(`/room/${code}`);
       else setOpenRoomError(res?.error || 'That room is no longer available.');
     });

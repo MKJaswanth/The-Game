@@ -218,7 +218,10 @@ export default function Navbar() {
           .nav-link { margin: 10px 4px 0; }
         }
 
-        @media (max-width: 380px) {
+        /* A 390-430 px phone still fits every nav item only once the callsign
+           collapses: the two links (173 px) plus the chip and leave button
+           (160 px) overflow the 384 px row and clip the leave button. */
+        @media (max-width: 460px) {
           .nav-link { gap: 4px; margin-inline: 2px; font-size: var(--t-xs); }
           .nav-chip { padding-right: 5px; }
           .nav-chip-name { display: none; }
