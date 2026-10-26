@@ -132,6 +132,7 @@ try {
 
   await wait(1200);
   ok(latest.Flyer?.status === 'racing', `countdown hands over to racing (${latest.Flyer?.status})`);
+  ok(Number.isFinite(latest.Flyer?.birds?.find((b) => b.nickname === 'Flyer')?.vy), 'server sends vertical velocity for responsive rendering');
 
   // only Flyer flies; Dropper never flaps and must hit the ground
   const auto = autopilot(A);

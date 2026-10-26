@@ -31,6 +31,7 @@
 - Client `games/flappy/Flappy.jsx` + `flappy.css`: canvas renderer with parallax starfield, neon pipe course, own bird + labelled rival ghosts, interpolated 30 Hz snapshots, DOM race HUD with live pipe counts, countdown overlay, crash-spectating banner, keyboard/pointer flaps, ranked results screen
 - Wiring: capacity `1–4` in `rooms.js`, handlers registered in `socket/index.js`, hub card enabled, Room route + rules banner, leaderboard tabs for UNO & Flappy, profile game labels, card meta
 - Verified with a 21-assertion two-player Socket.IO race (`test-flappy.mjs`) — including out-of-race flap rejection, crash lockout, scoring, broadcast rate, standings order and leaderboard persistence — plus a live browser race against an autopilot peer that rendered frames, accepted keyboard flaps and reached the results screen
+- **Responsive-flight pass (2026-10-26):** server snapshots now include vertical velocity; the client predicts the local bird immediately after a flap, gently reconciles to authoritative state, and extrapolates pipes/rival birds between snapshots. The same local transport sample remains about 25 state broadcasts/sec, so this targets perceived control latency rather than changing server tick throughput.
 
 **M13 Complete — Chess (US-028, US-029).**
 - Server `socket/games/chess.js`: `chess.js` owns the rules; the engine owns seats, turn order, check resolution and results. Every move is re-validated server-side, snapshots ship FEN + the legal-move map for the side to move, and checkmate/stalemate/threefold/insufficient-material/fifty-move are all detected
@@ -72,6 +73,7 @@
 - **Emoji event ordering fix (2026-10-26):** public clue-phase state now reaches room sockets before the private answer event, avoiding stale revealed answers during the next round; `test-emoji.mjs` is green.
 - **Chess inactivity clock (2026-10-26):** every turn now has a server-authoritative 60-second deadline (`CHESS_TURN_MS` overrides it for tests); timeout awards the game to the opponent, clears the timer, broadcasts the result, and persists the normal win/loss scores. The client shows a live countdown with an urgent final-ten-second state. Verified by `test-chess.mjs` and `test-chess-clock.mjs`.
 - **PWA shell (2026-10-26):** the client now ships a manifest, theme metadata, installable SVG icon, service-worker shell caching, and a friendly offline fallback page. The worker only registers in production builds so local Vite development remains unchanged.
+- **Single-port forwarded preview (2026-10-26):** Vite now proxies `/api`, `/health`, and `/socket.io` to the backend on port 4000, and the Socket.IO client uses the Vite origin during local development. Forwarding port 5173 alone now carries the full app; verified through the forwarded-style local proxy with `test-room-browser.mjs`.
 
 **Next Up:** M15 — Phase 2 QA & Deploy Update (US-022–031 regression pass; Supabase wiring intentionally deferred)
 
@@ -130,7 +132,7 @@
 | Flappy broadcast measured at ~26/s instead of 30/s | Slightly less smooth motion on slow machines | `setInterval` drift on Windows; client already interpolates between snapshots |
 | Chess has no move clock | A player who walks away leaves the game open indefinitely | Groundwork exists (`startedAt`, `moveCount`); add a per-move timeout in M15 |
 | Emoji round rests on the honour system for clue quality | A clue-giver can send irrelevant emoji and stall the round | Guessers can still solve by luck; a "skip/re-roll" vote is the natural M15+ fix |
-| Flappy is latency-bound on a distant deploy | The flap cycle (420 px/s impulse against 1450 px/s² gravity) has a ~0.29 s control horizon, so the game is hard when the round trip is ~0.25 s | Render's free instance sits far from the players (measured 244 ms RTT from India); the fix is a nearby region plus client-side prediction of the bird |
+| Flappy is latency-bound on a distant deploy | Client-side prediction now makes the local flap feel immediate, but authoritative collision/scoring still depends on the server and a very distant region can still feel delayed | Keep the game server geographically close to players; the client now predicts the bird and reconciles snapshots, while the server remains the source of truth |
 
 ---
 

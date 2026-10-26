@@ -243,3 +243,5 @@
 | M15-15 | Add Chess clock regression coverage and extend the core Chess suite with deadline assertions | M15 | 2026-10-26 |
 | M19-02 | Add PWA manifest, theme metadata, installable icon, and standalone launch configuration | M19 | 2026-10-26 |
 | M19-03 | Add production service-worker caching with an offline fallback page | M19 | 2026-10-26 |
+| M12-11 | Reduce perceived Flappy input latency with local prediction and snapshot reconciliation | M12 | 2026-10-26 |
+| M15-16 | Make Vite dev previews forwardable through one port with API and Socket.IO proxying | M15 | 2026-10-26 |

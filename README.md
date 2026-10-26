@@ -95,3 +95,11 @@ npm run dev
 ```
 
 Visit `http://localhost:5173` or share your LAN IP (`http://<your-ip>:5173`) to play together!
+
+### Port forwarding
+
+For an IDE/SSH port-forwarded preview, forward **5173** while running the Vite
+client. The Vite config proxies `/api`, `/health`, and `/socket.io` to the
+backend on port 4000, so one forwarded port is enough. Leave
+`VITE_SERVER_URL` unset in the client `.env` for this mode. Alternatively,
+build the client and forward **4000** to use the single-service Express mode.

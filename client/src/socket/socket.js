@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 // production) the API and websocket share the page origin instead.
 const VITE_PORTS = new Set(['5173', '4173']);
 const isViteDevServer = typeof window !== 'undefined' && VITE_PORTS.has(window.location.port);
+const configuredServerUrl = import.meta.env.VITE_SERVER_URL?.trim();
 const devServerUrl = typeof window !== 'undefined' && window.location.hostname
   ? `http://${window.location.hostname}:4000`
   : 'http://localhost:4000';
@@ -16,9 +17,16 @@ const devServerUrl = typeof window !== 'undefined' && window.location.hostname
 const isHttpPage =
   typeof window !== 'undefined' &&
   (window.location.protocol === 'http:' || window.location.protocol === 'https:');
-const sameOrigin = isHttpPage && !isViteDevServer ? window.location.origin : null;
+const sameOrigin = isHttpPage ? window.location.origin : null;
+const localBackendUrl = /^https?:\/\/(localhost|127\.0\.0\.1):4000\/?$/i.test(configuredServerUrl || '');
+// Vite proxies `/api`, `/health`, and `/socket.io` to :4000. Prefer that
+// same-origin path during local development so forwarding one port is enough;
+// an explicitly configured remote backend still wins outside local Vite.
+const useViteProxy = isViteDevServer && (!configuredServerUrl || localBackendUrl);
 
-export const SERVER_URL = import.meta.env.VITE_SERVER_URL || sameOrigin || devServerUrl;
+export const SERVER_URL = useViteProxy
+  ? sameOrigin
+  : configuredServerUrl || sameOrigin || devServerUrl;
 
 export const socket = io(SERVER_URL, {
   autoConnect: true,

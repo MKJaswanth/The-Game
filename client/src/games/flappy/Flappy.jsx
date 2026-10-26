@@ -14,6 +14,9 @@ const H = 560;
 const GROUND_H = 40;
 const BIRD_X = 110;
 const BIRD_R = 12;
+const GRAVITY = 1450;
+const FLAP_VY = -420;
+const MAX_FALL_VY = 720;
 
 const BIRD_COLORS = ['#f5c518', '#22d3ee', '#a78bfa', '#34d399'];
 const colorFor = (players, nickname) => {
@@ -23,6 +26,15 @@ const colorFor = (players, nickname) => {
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+function stepPredictedBird(bird, now) {
+  if (!bird) return null;
+  const dt = clamp((now - bird.at) / 1000, 0, 0.05);
+  bird.vy = Math.min(MAX_FALL_VY, bird.vy + GRAVITY * dt);
+  bird.y = clamp(bird.y + bird.vy * dt, BIRD_R, H - BIRD_R);
+  bird.at = now;
+  return bird;
+}
 
 /* ---------- canvas painting ---------- */
 
@@ -197,6 +209,8 @@ export default function Flappy({ roomCode, onExit }) {
   const [toast, setToast] = useState('');
   const [voteText, setVoteText] = useState('');
   const toastTimer = useRef(null);
+  const predictedMine = useRef(null);
+  const lastFlapAt = useRef(0);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -208,8 +222,33 @@ export default function Flappy({ roomCode, onExit }) {
   useEffect(() => {
     const onState = (snap) => {
       if (!snap || snap.roomCode !== roomCode) return;
+      const mine = snap.birds?.find((bird) => bird.nickname === nickname);
+      const now = performance.now();
+      const prediction = predictedMine.current;
+
+      if (mine) {
+        if (!prediction || snap.status !== 'racing' || !mine.alive || !prediction.alive) {
+          predictedMine.current = {
+            y: mine.y,
+            vy: mine.vy || 0,
+            at: now,
+            alive: mine.alive
+          };
+        } else {
+          // Keep the local flap responsive, then gently reconcile to the
+          // authoritative server snapshot instead of snapping backwards on
+          // every network update.
+          stepPredictedBird(prediction, now);
+          const recentFlap = now - lastFlapAt.current < 180;
+          prediction.y += (mine.y - prediction.y) * (recentFlap ? 0.16 : 0.34);
+          if (!recentFlap) prediction.vy = mine.vy || 0;
+          prediction.alive = mine.alive;
+          prediction.at = now;
+        }
+      }
+
       snapA.current = snapB.current;
-      snapB.current = { ...snap, at: performance.now() };
+      snapB.current = { ...snap, at: now };
       setLatest(snap);
     };
 
@@ -236,7 +275,7 @@ export default function Flappy({ roomCode, onExit }) {
       s.off('flappy:closed', onClosed);
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [roomCode, onExit, s, showToast]);
+  }, [nickname, roomCode, onExit, s, showToast]);
 
   /* ---------- render loop ---------- */
   useEffect(() => {
@@ -277,7 +316,8 @@ export default function Flappy({ roomCode, onExit }) {
       }
 
       const alpha = snapshotAlpha(a, b, now);
-      const worldX = a ? lerp(a.worldX, b.worldX, alpha) : b.worldX;
+      const extraSeconds = b.status === 'racing' ? Math.max(0, now - b.at) / 1000 : 0;
+      const worldX = (a ? lerp(a.worldX, b.worldX, alpha) : b.worldX) + extraSeconds * (b.scrollSpeed || 0);
       const players = b.birds.map((x) => x.nickname);
       const myNick = nickname;
 
@@ -287,7 +327,7 @@ export default function Flappy({ roomCode, onExit }) {
       const prevPipes = new Map((a?.pipes || []).map((p) => [p.id, p]));
       for (const p of b.pipes) {
         const prev = prevPipes.get(p.id);
-        const x = prev ? lerp(prev.x, p.x, alpha) : p.x;
+        const x = (prev ? lerp(prev.x, p.x, alpha) : p.x) - extraSeconds * (b.scrollSpeed || 0);
         const gapY = prev ? lerp(prev.gapY, p.gapY, alpha) : p.gapY;
         const gapH = prev ? lerp(prev.gapH, p.gapH, alpha) : p.gapH;
         if (x > W + 40 || x < -100) continue;
@@ -301,11 +341,15 @@ export default function Flappy({ roomCode, onExit }) {
       for (const bird of b.birds) {
         if (bird.nickname === myNick) continue;
         const prev = prevBirds.get(bird.nickname);
-        const y = prev ? lerp(prev.y, bird.y, alpha) : bird.y;
+        const y = clamp(
+          (prev ? lerp(prev.y, bird.y, alpha) : bird.y) + extraSeconds * (bird.vy || 0),
+          BIRD_R,
+          H - BIRD_R
+        );
         drawBird(ctx, {
           x: BIRD_X,
           y,
-          vy: 0,
+          vy: bird.vy || 0,
           color: colorFor(players, bird.nickname),
           alpha: bird.alive ? 0.85 : 0.28,
           label: bird.alive ? bird.nickname : `${bird.nickname} ✕`,
@@ -317,8 +361,11 @@ export default function Flappy({ roomCode, onExit }) {
       const mine = b.birds.find((x) => x.nickname === myNick);
       if (mine) {
         const prev = prevBirds.get(myNick);
-        const y = prev ? lerp(prev.y, mine.y, alpha) : mine.y;
-        const vy = prev ? (mine.y - prev.y) / (1 / 30) : 0;
+        const local = mine.alive && b.status === 'racing'
+          ? stepPredictedBird(predictedMine.current, now)
+          : null;
+        const y = local?.y ?? (prev ? lerp(prev.y, mine.y, alpha) : mine.y);
+        const vy = local?.vy ?? mine.vy ?? (prev ? (mine.y - prev.y) / (1 / 30) : 0);
         drawBird(ctx, {
           x: BIRD_X,
           y,
@@ -368,6 +415,14 @@ export default function Flappy({ roomCode, onExit }) {
     if (!st || st.status !== 'racing') return;
     const me = st.birds.find((x) => x.nickname === nickname);
     if (!me || !me.alive) return;
+    const now = performance.now();
+    if (!predictedMine.current) {
+      predictedMine.current = { y: me.y, vy: me.vy || 0, at: now, alive: true };
+    }
+    stepPredictedBird(predictedMine.current, now);
+    predictedMine.current.vy = FLAP_VY;
+    predictedMine.current.at = now;
+    lastFlapAt.current = now;
     s.emit('flappy:flap', { roomCode });
   }, [nickname, roomCode, s]);
 

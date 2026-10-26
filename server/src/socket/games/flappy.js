@@ -90,6 +90,7 @@ function broadcastFlappyState(io, game) {
       return {
         nickname: nick,
         y: Math.round(b.y * 10) / 10,
+        vy: Math.round(b.vy * 10) / 10,
         alive: b.alive,
         score: b.score,
         finishedAt: b.crashedAt
