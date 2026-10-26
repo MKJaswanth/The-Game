@@ -31,12 +31,12 @@
 .drawing-blanks span { width: 10px; height: 12px; border-bottom: 1px solid currentColor; opacity: .75; }
 .drawing-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); padding: 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
 .drawing-tool-group { display: flex; flex-wrap: wrap; gap: 5px; }
-.drawing-color { width: 22px; height: 22px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px rgba(255,255,255,.22) inset; }
+.drawing-color { width: 40px; height: 40px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; touch-action: manipulation; box-shadow: 0 0 0 1px rgba(255,255,255,.22) inset; }
 .drawing-color.is-selected { border-color: var(--text); box-shadow: 0 0 0 2px var(--accent); }
 .drawing-size { display: inline-flex; align-items: center; gap: 7px; color: var(--text-3); font-size: 9px; letter-spacing: .08em; }
 .drawing-size input { width: 82px; accent-color: var(--accent); }
 .drawing-size span { width: 18px; color: var(--text); text-align: right; }
-.drawing-tool-btn { padding: 7px 10px; border: 1px solid var(--border-2); border-radius: var(--r-sm); background: var(--bg-2); color: var(--text-2); font-size: var(--t-xs); cursor: pointer; }
+.drawing-tool-btn { min-height: 40px; padding: 7px 12px; border: 1px solid var(--border-2); border-radius: var(--r-sm); background: var(--bg-2); color: var(--text-2); font-size: var(--t-xs); cursor: pointer; touch-action: manipulation; }
 .drawing-tool-btn:hover, .drawing-tool-btn.is-active { border-color: var(--accent); color: var(--accent-hi); }
 .drawing-guess-form { display: flex; gap: var(--s2); }
 .drawing-guess-form .input-field { min-width: 0; flex: 1; }

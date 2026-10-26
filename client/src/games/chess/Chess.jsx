@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import socket from '../../socket/socket.js';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import './chess.css';
 
 /* M13 — Chess ♟️
@@ -96,6 +98,7 @@ function CapturedTray({ pieces, color }) {
 
 export default function Chess({ roomCode, onExit }) {
   const { nickname } = usePlayer();
+  const { play } = useAudio();
   const nick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : null);
 
   const [state, setState] = useState(null);
@@ -105,6 +108,9 @@ export default function Chess({ roomCode, onExit }) {
   const [confirmResign, setConfirmResign] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const errorTimer = useRef(null);
+  const dragRef = useRef(null);
+  const suppressClickRef = useRef(false);
+  const recordedRef = useRef(false);
 
   const flashError = useCallback((message) => {
     setError(message);
@@ -129,6 +135,7 @@ export default function Chess({ roomCode, onExit }) {
       setClockNow(Date.now());
       setSelected(null);
       setPendingPromotion(null);
+      if (payload.status === 'in_game') recordedRef.current = false;
     };
 
     socket.on('chess:state', onState);
@@ -156,10 +163,23 @@ export default function Chess({ roomCode, onExit }) {
     (from, to, promotion) => {
       socket.emit('chess:move', { roomCode, from, to, promotion }, (res) => {
         if (res && !res.success) flashError(res.error || 'Illegal move.');
+        else if (res?.success) play('move');
       });
     },
-    [roomCode, flashError]
+    [roomCode, flashError, play]
   );
+
+  const attemptMove = (from, to) => {
+    const target = (legalMoves?.[from] || []).find((move) => move.to === to);
+    if (!target) return false;
+    if (target.promotion) {
+      setPendingPromotion({ from, to });
+      return true;
+    }
+    sendMove(from, to);
+    setSelected(null);
+    return true;
+  };
 
   const handleSquareClick = (square) => {
     if (!state || !isLive || !myTurn) return;
@@ -167,16 +187,7 @@ export default function Chess({ roomCode, onExit }) {
     if (pendingPromotion) return;
 
     if (selected) {
-      const target = targets.find((t) => t.to === square);
-      if (target) {
-        if (target.promotion) {
-          setPendingPromotion({ from: selected, to: square });
-          return;
-        }
-        sendMove(selected, square);
-        setSelected(null);
-        return;
-      }
+      if (attemptMove(selected, square)) return;
     }
 
     const piece = board[square];
@@ -186,6 +197,41 @@ export default function Chess({ roomCode, onExit }) {
     }
     setSelected(null);
   };
+
+  const handlePointerDown = (event, square, piece) => {
+    if (!myTurn || pendingPromotion || !piece || piece.color !== myColor || !state.legalMoves[square]) return;
+    dragRef.current = { square, x: event.clientX, y: event.clientY, moved: false };
+    setSelected(square);
+  };
+
+  const handlePointerMove = (event) => {
+    if (!dragRef.current) return;
+    if (Math.hypot(event.clientX - dragRef.current.x, event.clientY - dragRef.current.y) > 6) {
+      dragRef.current.moved = true;
+    }
+  };
+
+  const handlePointerUp = (square) => {
+    if (!dragRef.current) return;
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drag.moved) {
+      suppressClickRef.current = true;
+      return;
+    }
+    suppressClickRef.current = true;
+    attemptMove(drag.square, square);
+  };
+
+  useEffect(() => {
+    if (state?.status !== 'finished' || recordedRef.current) return;
+    const result = state.result;
+    if (!result) return;
+    recordedRef.current = true;
+    const won = result.winner === nick;
+    recordPersonalResult({ gameType: 'chess', score: won ? 100 : 0, won });
+    play(won ? 'victory' : 'buzzer');
+  }, [state?.status, state?.result, nick, play]);
 
   const offerDraw = () => {
     socket.emit('chess:draw:offer', { roomCode }, (res) => {
@@ -285,7 +331,17 @@ export default function Chess({ roomCode, onExit }) {
                     isLast ? 'is-last' : '',
                     isCheck ? 'is-check' : '',
                   ].filter(Boolean).join(' ')}
-                  onClick={() => handleSquareClick(square)}
+                   onClick={() => {
+                     if (suppressClickRef.current) {
+                       suppressClickRef.current = false;
+                       return;
+                     }
+                     handleSquareClick(square);
+                   }}
+                   onPointerDown={(event) => handlePointerDown(event, square, piece)}
+                   onPointerMove={handlePointerMove}
+                   onPointerUp={() => handlePointerUp(square)}
+                   onPointerCancel={() => { dragRef.current = null; }}
                   aria-label={label}
                   aria-pressed={isSelected}
                 >

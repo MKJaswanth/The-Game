@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePlayer } from '../../context/PlayerContext.jsx';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import Avatar from '../../components/Avatar.jsx';
 import socket from '../../socket/socket.js';
 import './uno.css';
@@ -42,6 +44,7 @@ function HandCard({ card, playable, dimmed, isTurn, onClick }) {
       ].filter(Boolean).join(' ')}
       onClick={onClick}
       title={playable ? 'Play this card' : 'Not playable right now'}
+      aria-label={`${card.color} ${cardLabel(card)} card${playable ? ', playable' : ''}`}
     >
       <span className="uc-corner uc-tl">{cardLabel(card)}</span>
       <span className="uc-face">{cardLabel(card)}</span>
@@ -109,6 +112,7 @@ function TurnOrder({ view, nickname }) {
                   <span className="uno-seat-index mono">{String(index + 1).padStart(2, '0')}</span>
                   {isCurrent && <span className="uno-seat-live mono">ON TURN</span>}
                   {!isCurrent && isAfterMe && <span className="uno-seat-after mono">AFTER YOU</span>}
+                  {player.isBot && <span className="uno-seat-after mono">BOT</span>}
                 </div>
                 <div className="uno-seat-person">
                   <Avatar nickname={player.nickname} size="sm" />
@@ -136,6 +140,7 @@ function TurnOrder({ view, nickname }) {
 
 export default function Uno({ roomCode, onExit }) {
   const { nickname } = usePlayer();
+  const { play } = useAudio();
   const [game, setGame] = useState(null);
   const [pubState, setPubState] = useState(null); // public state for spectators
   const [toast, setToast] = useState('');
@@ -145,6 +150,8 @@ export default function Uno({ roomCode, onExit }) {
   const [now, setNow] = useState(() => Date.now());
   const toastTimer = useRef(null);
   const lastActionRef = useRef('');
+  const resultRecordedRef = useRef(false);
+  const view = game || pubState;
 
   const showToast = (msg) => {
     setToast(msg);
@@ -163,7 +170,10 @@ export default function Uno({ roomCode, onExit }) {
     // otherwise it stays disabled on "Starting…" for every later round.
     const onSession = (s) => {
       setGame(s);
-      if (s?.status === 'in_game') setRematchBusy(false);
+      if (s?.status === 'in_game') {
+        setRematchBusy(false);
+        resultRecordedRef.current = false;
+      }
     };
     const onState = (s) => {
       setPubState(s); // public state — spectators use this
@@ -202,13 +212,21 @@ export default function Uno({ roomCode, onExit }) {
     if (!lastAction || lastAction === lastActionRef.current) return;
     lastActionRef.current = lastAction;
     showToast(lastAction);
-  }, [lastAction]);
+    play(actionTone(lastAction) === 'is-penalty' ? 'draw' : 'card');
+  }, [lastAction, play]);
+
+  useEffect(() => {
+    if (view?.status !== 'finished' || resultRecordedRef.current) return;
+    const mine = (view.standings || []).find((standing) => standing.nickname === nickname);
+    if (!mine) return;
+    resultRecordedRef.current = true;
+    recordPersonalResult({ gameType: 'uno', score: mine.score || 0, won: Boolean(mine.isWinner) });
+    if (mine.isWinner) play('victory');
+  }, [view?.status, view?.standings, nickname, play]);
 
   // --- Determine if spectator ---
   // Spectators are players in the room who are NOT in the game's player list.
   // They get `uno:state` (public) but never `uno:session` (private hand).
-  const view = game || pubState;
-
   if (!view) {
     return (
       <div className="uno-wrap">
@@ -238,10 +256,14 @@ export default function Uno({ roomCode, onExit }) {
   // After drawing you may only play that card (or pass).
   const drawnCardId = game?.drawnCardId || null;
   const allowedIds = drawnCardId ? [drawnCardId] : playableIds;
-  const noPlayableCards = isMyTurn && !mustDraw && playableIds.length === 0 && !drawnCardId && !view.pendingDraw;
+  const hasNonWildMatch = yourHand.some((card) => (
+    card.type !== 'wild' && card.type !== 'wild4' && playableIds.includes(card.id)
+  ));
+  const canDrawInstead = isMyTurn && !drawnCardId && (mustDraw || !hasNonWildMatch);
 
   // Can the current player stack? (+2 or +4 when pendingDraw > 0)
   const canStack = isMyTurn && view.pendingDraw > 0;
+  const canDraw = canDrawInstead || canStack;
   const stackableIds = canStack
     ? yourHand.filter((c) => c.type === 'draw2' || c.type === 'wild4').map((c) => c.id)
     : [];
@@ -479,16 +501,22 @@ export default function Uno({ roomCode, onExit }) {
         <div className="uno-piles">
           <button
             type="button"
-            className={`uno-drawpile ${isMyTurn ? 'is-my-turn' : ''}`}
+            className={`uno-drawpile ${canDraw ? 'is-my-turn' : ''}`}
             onClick={doDraw}
-            disabled={!isMyTurn}
-            title="Draw a card"
+            disabled={!canDraw}
+            title={canDraw ? 'Draw a card' : 'Play a matching card first'}
           >
             <div className="uno-card-back">
               <span>UNO</span>
             </div>
             <span className="uno-drawpile-label mono">
-              {mustDraw ? `DRAW ${view.pendingDraw}` : canStack ? `DRAW ${view.pendingDraw} or STACK` : 'DRAW'}
+              {mustDraw
+                ? `DRAW ${view.pendingDraw}`
+                : canStack
+                  ? `DRAW ${view.pendingDraw} OR STACK`
+                  : canDrawInstead
+                    ? 'DRAW CARD'
+                    : 'PLAY A MATCH'}
             </span>
           </button>
 
@@ -500,47 +528,49 @@ export default function Uno({ roomCode, onExit }) {
           </div>
         </div>
 
-        {canStack && (
-          <div className="uno-banner uno-banner--stack">
-            ⚡ Draw stack: <strong>+{view.pendingDraw}</strong> pending — play a <strong>+2</strong> or <strong>+4</strong> to stack, or draw to absorb!
-          </div>
-        )}
+        <div className="uno-feedback-stack" aria-live="polite">
+          {canStack && (
+            <div className="uno-banner uno-banner--stack">
+              ⚡ Draw stack: <strong>+{view.pendingDraw}</strong> pending — play a <strong>+2</strong> or <strong>+4</strong> to stack, or draw to absorb!
+            </div>
+          )}
 
-        {mustDraw && !canStack && (
-          <div className="uno-banner">
-            ⚠️ You absorbed a draw stack — tap the deck to take {view.pendingDraw} and skip.
-          </div>
-        )}
+          {mustDraw && !canStack && (
+            <div className="uno-banner">
+              ⚠️ You absorbed a draw stack — tap the deck to take {view.pendingDraw} and skip.
+            </div>
+          )}
 
-        {noPlayableCards && (
-          <div className="uno-banner uno-banner--hint">
-            No card matches {view.currentColor} — tap the deck to pick one.
-          </div>
-        )}
+          {canDrawInstead && !mustDraw && !view.pendingDraw && (
+            <div className="uno-banner uno-banner--hint">
+              No color or number match — draw a card. You can keep your Wild cards.
+            </div>
+          )}
 
-        {drawnCardId && isMyTurn && (
-          <div className="uno-banner uno-banner--drawn">
-            You drew a playable card — play it, or{' '}
-            <button type="button" className="uno-passlink" onClick={doPass}>pass the turn</button>.
-          </div>
-        )}
+          {drawnCardId && isMyTurn && (
+            <div className="uno-banner uno-banner--drawn">
+              You drew a playable card — play it, or{' '}
+              <button type="button" className="uno-passlink" onClick={doPass}>pass the turn</button>.
+            </div>
+          )}
 
-        {view.lastAction && (
-          <div key={view.lastAction} className={`uno-feed mono ${actionTone(view.lastAction)}`}>
-            {view.lastAction}
-          </div>
-        )}
+          {view.lastAction && (
+            <div key={view.lastAction} className={`uno-feed mono ${actionTone(view.lastAction)}`}>
+              {view.lastAction}
+            </div>
+          )}
 
-        {view.unoPending && view.unoPending !== nickname && (
-          <button type="button" className="uno-catch" onClick={() => doCatch(view.unoPending)}>
-            Catch {view.unoPending}! (+2)
-          </button>
-        )}
-        {view.unoPending === nickname && (
-          <button type="button" className="uno-call" onClick={doCallUno}>
-            UNO! ({unoWindowLeft}s)
-          </button>
-        )}
+          {view.unoPending && view.unoPending !== nickname && (
+            <button type="button" className="uno-catch" onClick={() => doCatch(view.unoPending)}>
+              Catch {view.unoPending}! (+2)
+            </button>
+          )}
+          {view.unoPending === nickname && (
+            <button type="button" className="uno-call" onClick={doCallUno}>
+              UNO! ({unoWindowLeft}s)
+            </button>
+          )}
+        </div>
       </div>
 
       {/* My hand */}

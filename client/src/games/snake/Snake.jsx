@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import { SERVER_URL } from '../../socket/socket.js';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { getPersonalBests, recordPersonalResult } from '../../utils/personalBests.js';
 import './snake.css';
 
 const GRID_SIZE = 20; // 20x20 cells
@@ -16,6 +18,7 @@ const INITIAL_SNAKE = [
 
 export default function Snake({ onExit }) {
   const { nickname } = usePlayer();
+  const { play } = useAudio();
   const canvasRef = useRef(null);
 
   const [snake, setSnake] = useState(INITIAL_SNAKE);
@@ -23,12 +26,14 @@ export default function Snake({ onExit }) {
   const [food, setFood] = useState({ x: 15, y: 10 });
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(() => {
-    return parseInt(localStorage.getItem('snake_high_score') || '0', 10);
+    const stored = getPersonalBests().bestScores.snake;
+    return Math.max(Number(stored) || 0, parseInt(localStorage.getItem('snake_high_score') || '0', 10));
   });
   const [speed, setSpeed] = useState(INITIAL_SPEED);
   const [gameState, setGameState] = useState('idle'); // 'idle' | 'playing' | 'paused' | 'gameover'
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const touchStartRef = useRef(null);
 
   // Refs for loop to avoid closure staleness
   const directionRef = useRef(direction);
@@ -88,12 +93,14 @@ export default function Snake({ onExit }) {
 
   const handleGameOver = useCallback((finalScore) => {
     setGameState('gameover');
+    play('buzzer');
+    recordPersonalResult({ gameType: 'snake', score: finalScore, won: false });
     if (finalScore > highScore) {
       setHighScore(finalScore);
       localStorage.setItem('snake_high_score', finalScore.toString());
     }
     submitScore(finalScore);
-  }, [highScore, submitScore]);
+  }, [highScore, play, submitScore]);
 
   // Start game
   const startGame = useCallback(() => {
@@ -291,6 +298,22 @@ export default function Snake({ onExit }) {
     }
   };
 
+  const handleTouchStart = (event) => {
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event) => {
+    if (!touchStartRef.current) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) handleDpad({ x: dx > 0 ? 1 : -1, y: 0 });
+    else handleDpad({ x: 0, y: dy > 0 ? 1 : -1 });
+  };
+
   return (
     <div className="snake-container">
       {/* Header with Scores */}
@@ -341,7 +364,7 @@ export default function Snake({ onExit }) {
       </div>
 
       {/* Canvas Area */}
-      <div className="snake-canvas-wrapper">
+      <div className="snake-canvas-wrapper" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <canvas
           ref={canvasRef}
           width={CANVAS_DIM}
@@ -354,7 +377,7 @@ export default function Snake({ onExit }) {
           <div className="snake-overlay">
             <h2 style={{ fontSize: 'var(--t-2xl)', fontWeight: 800 }}>Ready to Slither?</h2>
             <p style={{ color: 'var(--text-2)', fontSize: 'var(--t-sm)', maxWidth: '300px' }}>
-              Use Arrow keys or WASD to navigate. Eat the amber orbs to grow.
+              Use the D-pad, swipe, Arrow keys, or WASD to navigate. Eat the amber orbs to grow.
             </p>
             <button type="button" className="btn btn-primary" onClick={startGame} style={{ padding: '12px 28px', fontWeight: 700 }}>
               Start Game (Space)

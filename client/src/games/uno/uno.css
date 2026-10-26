@@ -508,15 +508,26 @@
 .uno-hand {
   margin-top: auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0;
-  overflow-x: auto;
+  justify-content: center;
+  gap: 8px;
+  overflow: visible;
   padding: var(--s4) var(--s6) var(--s6);
   min-height: 150px;
   scrollbar-width: thin;
 }
-.uno-hand .uno-card { margin-left: -34px; }
-.uno-hand .uno-card:first-child { margin-left: 0; }
+
+.uno-feedback-stack {
+  width: min(100%, 520px);
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+}
+.uno-feedback-stack > .uno-banner,
+.uno-feedback-stack > .uno-feed { width: 100%; box-sizing: border-box; }
 
 .uno-card {
   width: 72px;
@@ -526,6 +537,7 @@
   border: 3px solid rgba(255, 255, 255, 0.9);
   position: relative;
   cursor: pointer;
+  touch-action: manipulation;
   padding: 0;
   transition: transform 160ms var(--ease), box-shadow 160ms var(--ease), filter 160ms var(--ease);
 }
@@ -685,7 +697,8 @@
 .uno-toast {
   position: fixed;
   left: 50%;
-  bottom: 96px;
+  top: 72px;
+  bottom: auto;
   transform: translateX(-50%);
   background: var(--surface);
   border: 1px solid var(--border-2);
@@ -700,6 +713,7 @@
   max-width: 90vw;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 /* ---------- turn clock ---------- */
@@ -824,8 +838,7 @@
   .uno-piles { gap: var(--s3); }
   .uno-discard, .uno-card-back { width: 76px; height: 110px; }
   .uno-card { width: 62px; height: 90px; }
-  .uno-hand { padding: var(--s3) var(--s4) var(--s4); min-height: 128px; }
-  .uno-hand .uno-card { margin-left: -40px; }
+  .uno-hand { gap: 6px; padding: var(--s3) var(--s4) var(--s4); min-height: 128px; }
   .uc-face { font-size: 21px; }
   .ucp-swatch { width: 92px; height: 62px; }
   .uno-turn-banner { padding: 8px 14px; }

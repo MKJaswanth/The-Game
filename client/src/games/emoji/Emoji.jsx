@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import socket from '../../socket/socket.js';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import './emoji.css';
 
 /* M14 — Emoji Guessing 🤔
@@ -44,6 +46,7 @@ function TimerBar({ remaining, total }) {
 
 export default function Emoji({ roomCode, onExit }) {
   const { nickname } = usePlayer();
+  const { play } = useAudio();
   const nick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : null);
 
   const [state, setState] = useState(null);
@@ -57,6 +60,7 @@ export default function Emoji({ roomCode, onExit }) {
   const [sent, setSent] = useState(false);
   const errorTimer = useRef(null);
   const feedRef = useRef(null);
+  const recordedRef = useRef(false);
 
   const flashError = useCallback((message) => {
     setError(message);
@@ -73,6 +77,7 @@ export default function Emoji({ roomCode, onExit }) {
       if (payload?.roomCode !== roomCode) return;
       setState(payload);
       setRemaining(payload.remainingMs || 0);
+      if (payload.phase !== 'finished') recordedRef.current = false;
       // The broadcast is the source of truth for the round's guess feed, so a
       // player who joins mid-round still sees everything said so far.
       setFeed({ round: payload.round, items: payload.guesses || [] });
@@ -125,6 +130,15 @@ export default function Emoji({ roomCode, onExit }) {
     () => [...(state?.scores || [])].sort((a, b) => b.score - a.score),
     [state?.scores]
   );
+
+  useEffect(() => {
+    if (state?.phase !== 'finished' || recordedRef.current) return;
+    const mine = standings.find((player) => player.nickname === nick);
+    if (!mine) return;
+    recordedRef.current = true;
+    recordPersonalResult({ gameType: 'emoji', score: mine.score || 0, won: state.winner === nick });
+    play(state.winner === nick ? 'victory' : 'buzzer');
+  }, [state?.phase, standings, nick, state?.winner, play]);
 
   const addEmoji = (emoji) => {
     setClue((prev) => {

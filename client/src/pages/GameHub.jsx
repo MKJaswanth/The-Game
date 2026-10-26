@@ -5,6 +5,7 @@ import { GAMES_CATALOG } from '../data/games.js';
 import GameCard from '../components/GameCard.jsx';
 import Modal from '../components/Modal.jsx';
 import Avatar from '../components/Avatar.jsx';
+import PersonalBestStrip from '../components/PersonalBestStrip.jsx';
 
 const TABS = [
   { id: 'all',         label: 'All' },
@@ -70,6 +71,11 @@ export default function GameHub() {
   });
 
   const createRoom = (gameType, opts = {}) => {
+    if (gameType === 'connect4') {
+      setSelectedGame(null);
+      navigate('/connect-four');
+      return;
+    }
     if (!socket?.connected) { setRoomError('Not connected'); return; }
     setIsProcessing(true); setRoomError('');
     socket.timeout(5000).emit('room:create', { gameType, nickname: currentNick, maxPlayers: opts.maxPlayers || selectedMaxPlayers || 4, isSolo: Boolean(opts.isSolo) }, (err, res) => {
@@ -194,6 +200,8 @@ export default function GameHub() {
               )}
             </div>
           </div>
+
+          <PersonalBestStrip />
 
           {/* Open rooms */}
           <section className="hub-open-rooms" aria-labelledby="open-rooms-title">

@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import Badge from '../../components/Badge.jsx';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import './wordscramble.css';
 
 export default function WordScramble({ roomCode, isHost, onExit }) {
   const { socket, nickname } = usePlayer();
+  const { play } = useAudio();
   const currentNick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : '');
 
   // Game state
@@ -36,6 +39,7 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
 
   const inputRef = useRef(null);
   const timerIntervalRef = useRef(null);
+  const recordedRef = useRef(false);
 
   // Sync game state from server on mount
   useEffect(() => {
@@ -80,6 +84,7 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
       setFeedback(null);
       setRevealedWord('');
       setGameState('round_active');
+      recordedRef.current = false;
 
       setTimeout(() => {
         if (inputRef.current) {
@@ -177,12 +182,14 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
       { roomCode, nickname: currentNick, guess: trimmed },
       (res) => {
         if (res && res.correct) {
+          play('correct');
           setHasGuessedCorrectly(true);
           setFeedback({
             type: 'success',
             message: `Correct! +${res.points} pts (Speed Bonus: +${res.speedBonus} pts)`
           });
         } else {
+          play('wrong');
           setIsShaking(true);
           setFeedback({
             type: 'error',
@@ -193,6 +200,15 @@ export default function WordScramble({ roomCode, isHost, onExit }) {
       }
     );
   };
+
+  useEffect(() => {
+    if (gameState !== 'game_over' || recordedRef.current) return;
+    const me = rankings.find((player) => player.nickname === currentNick);
+    if (!me) return;
+    recordedRef.current = true;
+    recordPersonalResult({ gameType: 'wordscramble', score: me.score || 0, won: winner?.nickname === currentNick });
+    if (winner?.nickname === currentNick) play('victory');
+  }, [gameState, rankings, winner, currentNick, play]);
 
   // Host restarts game
   const handleRestart = () => {

@@ -16,8 +16,9 @@ A real-time multiplayer gaming hub built for teams and friends. Pick a nickname,
 8. **🤔 Emoji Guessing:** A party game for 2–8 players — one player turns a secret phrase into emoji, everyone else races to decode it. Five rounds, rotating clue-giver, speed scoring.
 9. **🎨 Draw & Guess:** Real-time shared-canvas party game for 2–8 players with rotating drawers, speed scoring, and five rounds.
 10. **🎲 Ludo:** Server-authoritative 2–4 player board race with dice, four tokens, safe squares, captures, home lanes, and rematches.
+11. **🔴 Connect Four:** Local solo drop-four match against ConnectBot with touch-friendly column controls.
 
-All ten games are listed on the landing page and in the hub, each with its player count and live/soon state pulled from a single shared catalog.
+All eleven games are listed on the landing page and in the hub, each with its player count and live/soon state pulled from a single shared catalog.
 
 ---
 

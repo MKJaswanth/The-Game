@@ -1,0 +1,17 @@
+.connect4-wrap { width: min(100%, 700px); margin: 0 auto; display: flex; flex-direction: column; gap: var(--s5); animation: fadeUp 280ms var(--ease-spring) both; }
+.connect4-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s4); padding: var(--s5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.connect4-kicker { color: var(--accent-hi); font-size: 10px; letter-spacing: .15em; font-weight: 800; }
+.connect4-head h2 { margin-top: 4px; font-size: var(--t-2xl); color: var(--text); }
+.connect4-head p { margin-top: 4px; color: var(--text-2); font-size: var(--t-sm); }
+.connect4-matchup { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: var(--t-sm); white-space: nowrap; }
+.connect4-matchup .mono { color: var(--text-3); font-size: 10px; }
+.connect4-board { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 12px; background: #172554; border: 1px solid #334a86; border-radius: var(--r-lg); box-shadow: 0 16px 30px rgba(0,0,0,.28); touch-action: manipulation; }
+.connect4-cell { aspect-ratio: 1; display: grid; place-items: center; padding: 5px; border: 0; border-radius: 50%; background: #0b1535; cursor: pointer; }
+.connect4-cell:disabled { cursor: default; }
+.connect4-cell:not(:disabled):hover { background: #223b76; }
+.connect4-disc { display: block; width: 100%; height: 100%; border-radius: 50%; border: 2px solid rgba(255,255,255,.22); box-shadow: inset 0 5px 8px rgba(255,255,255,.16), 0 4px 8px rgba(0,0,0,.32); }
+.connect4-disc.red { background: #ef4444; }
+.connect4-disc.yellow { background: #fbbf24; }
+.connect4-cell.is-winning { outline: 3px solid var(--accent-hi); outline-offset: 2px; }
+.connect4-actions { display: flex; justify-content: center; gap: var(--s3); }
+@media (max-width: 560px) { .connect4-head { align-items: flex-start; flex-direction: column; } .connect4-matchup { white-space: normal; } .connect4-board { gap: 5px; padding: 8px; } .connect4-cell { padding: 3px; } }

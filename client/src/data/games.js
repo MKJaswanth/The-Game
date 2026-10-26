@@ -48,14 +48,26 @@ export const GAMES_CATALOG = [
     maxPlayers: 2
   },
   {
+    id: 'connect4',
+    title: 'Connect Four',
+    description: 'Drop discs, block ConnectBot, and connect four before the board fills up.',
+    playerCount: '1 Player (Solo Bot)',
+    category: '1V1 BATTLE',
+    badgeVariant: 'warning',
+    isAvailable: true,
+    supportsSolo: true,
+    minPlayers: 1,
+    maxPlayers: 1
+  },
+  {
     id: 'uno',
     title: 'UNO',
     description: 'The beloved card game of colors, skips, reverses, and wild draws — call UNO to win.',
-    playerCount: '2–8 Players',
+    playerCount: 'Solo Bot or 2–8 Players',
     category: 'CARD GAME',
     badgeVariant: 'success',
     isAvailable: true,
-    supportsSolo: false,
+    supportsSolo: true,
     minPlayers: 2,
     maxPlayers: 8
   },

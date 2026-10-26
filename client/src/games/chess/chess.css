@@ -44,6 +44,7 @@
   overflow: hidden;
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
   user-select: none;
+  touch-action: none;
 }
 
 .chess-sq {
@@ -54,9 +55,11 @@
   padding: 0;
   border: 0;
   cursor: pointer;
+  touch-action: none;
   background: transparent;
   transition: filter var(--ease);
 }
+.chess-sq:active { cursor: grabbing; }
 .chess-sq.is-light { background: #b7a88c; }
 .chess-sq.is-dark  { background: #63594a; }
 .chess-sq:hover { filter: brightness(1.06); }

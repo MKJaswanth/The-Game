@@ -2,12 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePlayer } from '../../context/PlayerContext';
 import Avatar from '../../components/Avatar.jsx';
 import Badge from '../../components/Badge.jsx';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import './trivia.css';
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 
 export default function Trivia({ roomCode, isHost, onExit }) {
   const { nickname: currentNick, socket } = usePlayer();
+  const { play } = useAudio();
 
   const [gameState, setGameState] = useState('starting'); // starting | question_active | question_result | game_over
   const [questionData, setQuestionData] = useState(null);
@@ -27,8 +30,10 @@ export default function Trivia({ roomCode, isHost, onExit }) {
   // Game over state
   const [rankings, setRankings] = useState([]);
   const [winner, setWinner] = useState(null);
+  const [botNickname, setBotNickname] = useState(null);
 
   const timerRef = useRef(null);
+  const recordedRef = useRef(false);
 
   // Local animated countdown during question_active
   useEffect(() => {
@@ -60,9 +65,11 @@ export default function Trivia({ roomCode, isHost, onExit }) {
     if (!socket) return;
 
     // trivia:starting
-    const handleStarting = () => {
+    const handleStarting = (data) => {
       setGameState('starting');
       setScores({});
+      setBotNickname(data?.botNickname || null);
+      recordedRef.current = false;
     };
 
     // trivia:question
@@ -75,6 +82,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       setTimeLeft(data.timeLimit || 15);
       setTotalTime(data.timeLimit || 15);
       setScores(data.scores || {});
+      setBotNickname(data.botNickname || null);
       setAnsweredPlayers(new Set());
       setResultData(null);
     };
@@ -98,6 +106,7 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       setRankings(data.rankings || []);
       setWinner(data.winner || null);
       setScores(data.finalScores || {});
+      setBotNickname(data.botNickname || null);
     };
 
     socket.on('trivia:starting', handleStarting);
@@ -113,7 +122,8 @@ export default function Trivia({ roomCode, isHost, onExit }) {
           setQuestionData(res.question);
           setGameState('question_active');
           setTimeLeft(res.timeLeft || 15);
-          setScores(res.scores || {});
+           setScores(res.scores || {});
+           setBotNickname(res.question.botNickname || null);
         }
       }
     });
@@ -145,10 +155,24 @@ export default function Trivia({ roomCode, isHost, onExit }) {
       (res) => {
         if (res && res.success) {
           setMyAnswerResult(res);
+          play(res.isCorrect ? 'correct' : 'wrong');
         }
       }
     );
-  }, [gameState, hasAnswered, socket, roomCode, currentNick]);
+  }, [gameState, hasAnswered, socket, roomCode, currentNick, play]);
+
+  useEffect(() => {
+    if (gameState !== 'game_over' || recordedRef.current) return;
+    const me = rankings.find((player) => player.nickname === currentNick);
+    if (!me) return;
+    recordedRef.current = true;
+    recordPersonalResult({
+      gameType: 'trivia',
+      score: me.score,
+      won: winner?.nickname === currentNick
+    });
+    if (winner?.nickname === currentNick) play('victory');
+  }, [gameState, rankings, winner, currentNick, play]);
 
   // Keyboard shortcut listener for options (1-4 or A-D)
   useEffect(() => {
@@ -465,7 +489,8 @@ export default function Trivia({ roomCode, isHost, onExit }) {
                     {nick} {isYou ? '(You)' : ''}
                   </span>
                   <strong style={{ color: 'var(--accent-hi)', fontFamily: 'var(--mono)' }}>{score}</strong>
-                  {gameState === 'question_active' && (
+               {nick === botNickname && <Badge variant="warning" style={{ fontSize: '9px', padding: '1px 5px' }}>BOT</Badge>}
+               {gameState === 'question_active' && (
                     <span style={{ fontSize: '10px' }} title={hasSubmitted ? 'Answered' : 'Thinking...'}>
                       {hasSubmitted ? '✓' : '…'}
                     </span>

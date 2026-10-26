@@ -121,6 +121,7 @@ async function runTrivia({ solo }) {
   const startInfo = await starting;
   ok(startInfo && startInfo.totalQuestions === 10, `trivia announces 10 questions (got ${startInfo?.totalQuestions})`);
   ok(startInfo?.timeLimit === 15, 'trivia announces a 15s per-question limit');
+  if (solo) ok(startInfo?.botNickname === 'QuizBot', 'solo trivia adds QuizBot');
 
   let questions = 0;
   let correctAnswers = 0;
@@ -175,6 +176,7 @@ async function runTrivia({ solo }) {
       ok(Boolean(result), 'question result broadcast');
       ok(typeof result?.correctIndex === 'number', 'result includes correctIndex');
       ok(result?.answers?.QuizHost, 'result includes the answer record');
+      if (solo) ok(result?.answers?.QuizBot, 'result includes QuizBot answer record');
       ok(result?.nextQuestionIn === 3, 'result announces a 3s pause');
     }
     if (result?.scores) lastScores = result.scores;
@@ -188,9 +190,10 @@ async function runTrivia({ solo }) {
 
   const end = await endPromise;
   ok(Boolean(end), 'trivia:end broadcast after 10 questions');
-  ok(Array.isArray(end?.rankings) && end.rankings.length === (solo ? 1 : 2), 'rankings cover every player');
+   ok(Array.isArray(end?.rankings) && end.rankings.length === (solo ? 2 : 2), 'rankings cover every player and bot');
   if (solo) {
-    ok(end?.winner?.nickname === 'QuizHost', `host wins a solo match (${end?.winner?.nickname} ${end?.winner?.score})`);
+    ok(['QuizHost', 'QuizBot'].includes(end?.winner?.nickname), `solo match has a valid winner (${end?.winner?.nickname} ${end?.winner?.score})`);
+    ok((end?.rankings || []).some((player) => player.nickname === 'QuizBot'), 'QuizBot appears in the solo rankings');
   } else {
     const names = (end?.rankings || []).map((r) => r.nickname);
     ok(names.includes('QuizHost') && names.includes('QuizGuest'), 'both players appear in the rankings');
@@ -208,7 +211,7 @@ async function runTrivia({ solo }) {
   // winner proves the result reached the store (and with the right verdict).
   await wait(700);
   const champion = end?.rankings?.[0];
-  if (champion && champion.score > 0) {
+  if (champion && champion.score > 0 && champion.nickname !== 'QuizBot') {
     const champProfile = await profile(champion.nickname);
     ok(champProfile?.gamesPlayed >= 1, 'trivia result reached the profile store');
     ok(champProfile?.totalWins >= 1, `the winner is recorded as a win, not a loss (${champion.nickname} ${champion.score})`);
@@ -219,6 +222,8 @@ async function runTrivia({ solo }) {
     const board = await fetch(`${SERVER}/api/leaderboard/trivia`).then((r) => r.json()).catch(() => null);
     const row = (board?.leaderboard || []).find((r) => r.nickname === champion.nickname);
     ok(row?.won === true, `the winning leaderboard row is flagged as a win (${row?.nickname} ${row?.score})`);
+  } else if (champion?.nickname === 'QuizBot') {
+    console.log('NOTE QuizBot won — bot scores are intentionally not persisted as player profiles');
   } else {
     console.log('NOTE nobody scored in this trivia match — win recording not asserted');
   }

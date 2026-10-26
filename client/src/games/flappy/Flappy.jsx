@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import socket from '../../socket/socket.js';
 import './flappy.css';
 
@@ -248,6 +250,7 @@ function snapshotAlpha(a, b, now) {
 
 export default function Flappy({ roomCode, onExit }) {
   const { nickname, socket: ctxSocket } = usePlayer();
+  const { play } = useAudio();
   const s = ctxSocket || socket;
 
   const canvasRef = useRef(null);
@@ -260,6 +263,7 @@ export default function Flappy({ roomCode, onExit }) {
   const toastTimer = useRef(null);
   const predictedMine = useRef(null);
   const lastFlapAt = useRef(0);
+  const recordedRef = useRef(false);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -274,6 +278,7 @@ export default function Flappy({ roomCode, onExit }) {
       if (snap.status !== 'finished') {
         setRematchBusy(false);
         setVoteText('');
+        recordedRef.current = false;
       }
       const mine = snap.birds?.find((bird) => bird.nickname === nickname);
       const now = performance.now();
@@ -476,8 +481,18 @@ export default function Flappy({ roomCode, onExit }) {
     predictedMine.current.vy = FLAP_VY;
     predictedMine.current.at = now;
     lastFlapAt.current = now;
+    play('flap');
     s.emit('flappy:flap', { roomCode });
-  }, [nickname, roomCode, s]);
+  }, [nickname, roomCode, s, play]);
+
+  useEffect(() => {
+    if (latest?.status !== 'finished' || recordedRef.current) return;
+    const mine = (latest.standings || []).find((standing) => standing.nickname === nickname);
+    if (!mine) return;
+    recordedRef.current = true;
+    recordPersonalResult({ gameType: 'flappy', score: mine.score, survivalMs: mine.survivalMs, won: Boolean(mine.isWinner) });
+    play(mine.isWinner ? 'victory' : 'buzzer');
+  }, [latest?.status, latest?.standings, nickname, play]);
 
   useEffect(() => {
     const onKey = (e) => {

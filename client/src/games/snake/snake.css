@@ -58,6 +58,7 @@
   border: 1px solid var(--border-2);
   border-radius: var(--r-lg);
   overflow: hidden;
+  touch-action: none;
 }
 
 .snake-canvas {
@@ -99,6 +100,9 @@
   justify-content: center;
   cursor: pointer;
   user-select: none;
+  touch-action: manipulation;
+  min-width: 56px;
+  min-height: 56px;
   transition: background var(--ease), color var(--ease);
 }
 

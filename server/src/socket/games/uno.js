@@ -78,10 +78,12 @@ export function startUnoGame(io, roomCode, { startMessage = null, roundNumber = 
   if (!room) return null;
 
   const players = room.players.map((p) => p.nickname);
-  if (players.length < 2) {
+  const botNickname = room.isSolo ? 'UnoBot' : null;
+  if (players.length < 2 && !botNickname) {
     console.warn(`[UNO] Not enough players in room ${code} (${players.length})`);
     return null;
   }
+  if (botNickname) players.push(botNickname);
 
   const deck = buildUnoDeck();
   const hands = {};
@@ -116,6 +118,8 @@ export function startUnoGame(io, roomCode, { startMessage = null, roundNumber = 
     unoTimer: null,
     turnDeadline: null,
     turnTimer: null,
+    botTimer: null,
+    botNickname,
     drawnCardId: null, // card drawn this turn that may still be played
     lastAction: startMessage, // human-readable feed line shown to the table
     isForfeit: false,
@@ -139,6 +143,7 @@ export function stopUnoGame(roomCode) {
   const game = activeUnoGames.get(code);
   if (game) {
     if (game.unoTimer) clearTimeout(game.unoTimer);
+    if (game.botTimer) clearTimeout(game.botTimer);
     clearTurnClock(game);
     activeUnoGames.delete(code);
     console.log(`[UNO] Cleaned up game for room ${code}`);
@@ -177,6 +182,49 @@ function startTurnClock(io, game, ms = TURN_MS) {
     resolveTurn(io, live, { timedOut: true });
   }, ms + 40);
   if (typeof game.turnTimer.unref === 'function') game.turnTimer.unref();
+  scheduleUnoBot(io, game);
+}
+
+function chooseBotColor(hand) {
+  const counts = Object.fromEntries(COLORS.map((color) => [color, 0]));
+  hand.forEach((card) => {
+    if (counts[card.color] !== undefined) counts[card.color] += 1;
+  });
+  return COLORS.reduce((best, color) => counts[color] > counts[best] ? color : best, COLORS[0]);
+}
+
+function scheduleUnoBot(io, game) {
+  if (!game.botNickname || game.status !== 'in_game' || game.players[game.turnIdx] !== game.botNickname) return;
+  if (game.botTimer) clearTimeout(game.botTimer);
+  game.botTimer = setTimeout(() => {
+    game.botTimer = null;
+    runUnoBotTurn(io, game).catch((error) => console.warn(`[UNO] Bot turn failed: ${error.message}`));
+  }, 650);
+  if (typeof game.botTimer.unref === 'function') game.botTimer.unref();
+}
+
+async function runUnoBotTurn(io, game) {
+  const bot = game.botNickname;
+  if (!bot || activeUnoGames.get(game.roomCode) !== game || game.status !== 'in_game') return;
+  if (game.players[game.turnIdx] !== bot) return;
+
+  const hand = game.hands[bot] || [];
+  const playable = hand.filter((card) => isPlayable(game, card, hand));
+  const card = playable
+    .filter((candidate) => candidate.type !== 'wild4')
+    .sort((a, b) => cardPoints(a) - cardPoints(b))[0] || playable[0];
+
+  if (card) {
+    await playCard(io, game.roomCode, bot, card.id, card.color === 'wild' ? chooseBotColor(hand) : undefined);
+    if (game.unoPending === bot) callUno(io, game.roomCode, bot);
+    return;
+  }
+
+  const drawn = handleDraw(io, game.roomCode, bot);
+  if (drawn.success && drawn.turnContinues && drawn.drawnCard) {
+    await playCard(io, game.roomCode, bot, drawn.drawnCard.id, drawn.drawnCard.color === 'wild' ? chooseBotColor(game.hands[bot] || []) : undefined);
+    if (game.unoPending === bot) callUno(io, game.roomCode, bot);
+  }
 }
 
 /**
@@ -253,7 +301,8 @@ function publicState(game) {
       nickname: nick,
       handCount: (game.hands[nick] || []).length,
       isTurn: idx === game.turnIdx,
-      atUno: (game.hands[nick] || []).length === 1 && game.unoPending !== nick
+      atUno: (game.hands[nick] || []).length === 1 && game.unoPending !== nick,
+      isBot: nick === game.botNickname
     })),
     topCard: game.discard[game.discard.length - 1],
     currentColor: game.current.color,
@@ -350,12 +399,29 @@ export function isPlayable(game, card, hand) {
 }
 
 /**
+ * Wild cards are escape cards rather than color/number matches. A player may
+ * draw when one of those is the only playable card, so they are not forced to
+ * spend a Wild +4 they would rather keep.
+ */
+export function canDrawWithoutMatch(game, hand = []) {
+  return !hand.some((card) => (
+    card.type !== 'wild' &&
+    card.type !== 'wild4' &&
+    isPlayable(game, card, hand)
+  ));
+}
+
+/**
  * M11-05: Finish the game, compute standings, persist scores (M11-14)
  */
 async function finishGame(io, game, winnerNickname) {
   if (game.unoTimer) {
     clearTimeout(game.unoTimer);
     game.unoTimer = null;
+  }
+  if (game.botTimer) {
+    clearTimeout(game.botTimer);
+    game.botTimer = null;
   }
   clearTurnClock(game);
   game.unoPending = null;
@@ -394,9 +460,11 @@ async function finishGame(io, game, winnerNickname) {
   );
 
   try {
-    await recordScore(winner, 'uno', Math.max(opponentsPoints, 1), true);
+    if (winner !== game.botNickname) {
+      await recordScore(winner, 'uno', Math.max(opponentsPoints, 1), true);
+    }
     for (const s of standings) {
-      if (s.nickname !== winner) {
+      if (s.nickname !== winner && s.nickname !== game.botNickname) {
         await recordScore(s.nickname, 'uno', 0, false);
       }
     }
@@ -559,12 +627,12 @@ export function handleDraw(io, roomCode, nickname) {
     return { success: false, error: 'You already drew this turn — play the drawn card or pass.' };
   }
 
-  // Classic UNO: can only draw if you have no playable cards
+  // A color/number/action match must be played, but a Wild or Wild +4 alone
+  // should not trap the player into spending a special card.
   if (!wasPending && !game.drawnCardId) {
     const hand = game.hands[nickname];
-    const hasPlayable = hand.some((c) => isPlayable(game, c, hand));
-    if (hasPlayable) {
-      return { success: false, error: 'You have playable cards — play one!' };
+    if (!canDrawWithoutMatch(game, hand)) {
+      return { success: false, error: 'You have a matching card — play one!' };
     }
   }
 
@@ -699,7 +767,7 @@ export function handleRematch(io, roomCode, nickname) {
   if (game.status === 'in_game') return { success: false, error: 'Game is still running.' };
 
   const room = getRoom(code);
-  if (!room || room.players.length < 2) {
+  if (!room || (room.players.length < 2 && !room.isSolo)) {
     return { success: false, error: 'Need 2+ players in the room to rematch.' };
   }
 
@@ -780,7 +848,7 @@ export function registerUnoHandlers(io, socket) {
     let game = getUnoGame(roomCode);
     if (!game) {
       const room = getRoom(roomCode);
-      if (room && room.gameType === 'uno' && room.players.length >= 2) {
+      if (room && room.gameType === 'uno' && (room.players.length >= 2 || room.isSolo)) {
         game = startUnoGame(io, roomCode);
       }
     }

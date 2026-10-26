@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { usePlayer } from '../context/PlayerContext.jsx';
 import { GAMES_CATALOG } from '../data/games.js';
@@ -26,6 +26,7 @@ const RULES = {
   emoji:        { title: '5 Emoji Rounds',       detail: '60 s per clue · clue-giver earns points too' },
   drawing:      { title: '5 Drawing Rounds',     detail: '80 s per round · drawer bonus · speed scoring' },
   ludo:         { title: 'Four-Token Race',      detail: 'Server dice · captures · safe squares · first home wins' },
+  connect4:     { title: 'Solo Bot Match',       detail: 'Drop discs · block ConnectBot · connect four to win' },
   snake:        { title: 'Survival Run',        detail: 'Eat, grow, avoid walls — score to leaderboard' },
 };
 
@@ -42,6 +43,8 @@ export default function Room() {
   // Bumped on every socket reconnect so a live game re-fetches its state instead
   // of sitting on a board that stopped updating while the link was down.
   const [resumeNonce, setResumeNonce] = useState(0);
+  const hasRoomRef = useRef(false);
+  const pageUnloadingRef = useRef(false);
 
   const roomCode    = code?.toUpperCase()?.trim();
   const currentNick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : null);
@@ -61,17 +64,30 @@ export default function Room() {
     const joinRoom = () => socket.timeout(5000).emit('room:join', { roomCode, nickname: currentNick, token: readToken() }, (err, r) => {
       if (!active) return;
       setLoading(false);
-      if (err) { setError('Connection timed out. Please try again.'); return; }
-      if (r?.success) { saveToken(r.token); setRoom(r.room); }
-      else setError(r?.error || 'Room not found');
+      if (err) {
+        if (!hasRoomRef.current) setError('Connection timed out. Please try again.');
+        return;
+      }
+      if (r?.success) {
+        saveToken(r.token);
+        hasRoomRef.current = true;
+        setError('');
+        setRoom(r.room);
+      } else setError(r?.error || 'Room not found');
     });
 
     const syncRoom = () => socket.timeout(5000).emit('room:get', { roomCode, nickname: currentNick, token: readToken() }, (err, res) => {
       if (!active) return;
-      if (err) { setLoading(false); setError('Connection timed out. Please try again.'); return; }
+      if (err) {
+        setLoading(false);
+        if (!hasRoomRef.current) setError('Connection timed out. Please try again.');
+        return;
+      }
       if (!res?.success || !res.room) { joinRoom(); return; }
       setLoading(false);
       if (res.token) saveToken(res.token);
+      hasRoomRef.current = true;
+      setError('');
       setRoom(res.room);
 
       const isMember = res.room.players?.some((p) => p.nickname === currentNick);
@@ -100,15 +116,21 @@ export default function Room() {
   // Leaving through the top nav (Hub, Leaderboard, profile) is an in-app route
   // change, so the socket stays connected and the server kept the seat — the
   // room stayed listed with a host who was already on the Hub. Give it up on
-  // unmount; a full reload does not run this cleanup, so refresh still uses the
-  // reconnect grace window. The 0 ms arm skips StrictMode's double-mount in dev.
+  // unmount; a reload can run component cleanup before the socket disconnects,
+  // so mark page unloads and let the server's reconnect grace window hold the
+  // seat. The 0 ms arm skips StrictMode's double-mount in dev.
   useEffect(() => {
     if (!socket || !roomCode || !currentNick) return undefined;
     let armed = false;
     const arm = setTimeout(() => { armed = true; }, 0);
+    const markPageUnloading = () => { pageUnloadingRef.current = true; };
+    window.addEventListener('pagehide', markPageUnloading);
+    window.addEventListener('beforeunload', markPageUnloading);
     return () => {
       clearTimeout(arm);
-      if (armed) socket.emit('room:leave', { roomCode, nickname: currentNick });
+      window.removeEventListener('pagehide', markPageUnloading);
+      window.removeEventListener('beforeunload', markPageUnloading);
+      if (armed && !pageUnloadingRef.current) socket.emit('room:leave', { roomCode, nickname: currentNick });
     };
   }, [socket, roomCode, currentNick]);
 
@@ -147,7 +169,7 @@ export default function Room() {
   );
 
   /* Error */
-  if (error || !room) return (
+  if (!room) return (
     <>
       <div className="page"><div className="container rstate">
         <div className="rstate-card card">
@@ -207,6 +229,10 @@ export default function Room() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div className="rconnection-error" role="status" aria-live="polite">{error}</div>
+          )}
 
           {awayPlayers.length > 0 && (
             <div className="rreconnect-note" role="status" aria-live="polite">
@@ -397,6 +423,16 @@ const roomStyles = (
     }
     .rcode-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); }
     .rbar-copy { padding: 8px 16px; font-size: var(--t-xs); font-weight: 700; }
+    .rconnection-error {
+      margin: calc(var(--s5) * -1) 0 var(--s4);
+      padding: var(--s3) var(--s4);
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      border-radius: var(--r-md);
+      background: rgba(245, 158, 11, 0.08);
+      color: var(--amber);
+      font-size: var(--t-xs);
+      font-weight: 700;
+    }
 
     /* Lobby */
     .rlobby { display: flex; flex-direction: column; gap: var(--s4); }

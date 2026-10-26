@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import './ludo.css';
 
 const COLORS = ['red', 'green', 'yellow', 'blue'];
@@ -26,9 +28,11 @@ function Dice({ value }) {
 
 export default function Ludo({ roomCode, onExit }) {
   const { socket, nickname } = usePlayer();
+  const { play } = useAudio();
   const nick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : '');
   const [state, setState] = useState(null);
   const [error, setError] = useState('');
+  const recordedRef = React.useRef(false);
 
   useEffect(() => {
     if (!socket || !roomCode) return undefined;
@@ -43,11 +47,26 @@ export default function Ludo({ roomCode, onExit }) {
   const standings = useMemo(() => [...(state?.standings || [])].sort((a, b) => (a.rank || 99) - (b.rank || 99)), [state?.standings]);
 
   const act = (event, payload) => {
+    if (event === 'ludo:roll') play('dice');
+    if (event === 'ludo:move') play('move');
     socket?.emit(event, { roomCode, ...payload }, (res) => {
       if (res && !res.success) setError(res.error || 'That move is not available.');
       else setError('');
     });
   };
+
+  useEffect(() => {
+    if (state?.status === 'in_game') {
+      recordedRef.current = false;
+      return;
+    }
+    if (state?.status !== 'finished' || recordedRef.current) return;
+    const mine = state.standings?.find((player) => player.nickname === nick);
+    if (!mine) return;
+    recordedRef.current = true;
+    recordPersonalResult({ gameType: 'ludo', score: mine.score || 0, won: state.winner === nick });
+    play(state.winner === nick ? 'victory' : 'buzzer');
+  }, [state?.status, state?.standings, state?.winner, nick, play]);
 
   const tokenClick = (player, tokenIndex) => {
     if (!player.isTurn || !player.legalTokenIds?.includes(tokenIndex)) return;

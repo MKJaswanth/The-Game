@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import Badge from '../../components/Badge.jsx';
 import Button from '../../components/Button.jsx';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import './tictactoe.css';
 
 export default function TicTacToe({ roomCode, _isHost, onExit }) {
   const { nickname, socket } = usePlayer();
+  const { play } = useAudio();
   const currentNick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : 'Player');
 
   const [gameState, setGameState] = useState({
@@ -25,6 +28,7 @@ export default function TicTacToe({ roomCode, _isHost, onExit }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   const [turnWarning, setTurnWarning] = useState('');
   const [rematchLoading, setRematchLoading] = useState(false);
+  const recordedRef = useRef(false);
 
   // Sync with server state
   useEffect(() => {
@@ -95,6 +99,7 @@ export default function TicTacToe({ roomCode, _isHost, onExit }) {
         setTurnWarning(res.error || 'Invalid move');
         setTimeout(() => setTurnWarning(''), 2500);
       }
+      else if (res?.success) play('move');
     });
   };
 
@@ -110,6 +115,18 @@ export default function TicTacToe({ roomCode, _isHost, onExit }) {
   const isVictory = winner === currentNick;
   const isDefeat = winner && winner !== 'draw' && winner !== currentNick;
   const isDraw = winner === 'draw';
+
+  useEffect(() => {
+    if (status === 'in_game') {
+      recordedRef.current = false;
+      return;
+    }
+    if (!isGameOver || recordedRef.current || !myMark) return;
+    recordedRef.current = true;
+    const won = winner === currentNick;
+    recordPersonalResult({ gameType: 'tictactoe', score: won ? 100 : 0, won });
+    play(won ? 'victory' : isDraw ? 'buzzer' : 'wrong');
+  }, [status, isGameOver, winner, currentNick, myMark, isDraw, play]);
 
   return (
     <div className="ttt-container">

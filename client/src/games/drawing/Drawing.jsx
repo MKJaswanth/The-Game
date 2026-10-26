@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePlayer } from '../../context/PlayerContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
+import { useAudio } from '../../context/AudioContext.jsx';
+import { recordPersonalResult } from '../../utils/personalBests.js';
 import './drawing.css';
 
 const COLORS = ['#ffffff', '#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc', '#fb7185', '#111827'];
@@ -50,10 +52,12 @@ function TimerBar({ remaining, total }) {
 
 export default function Drawing({ roomCode, onExit }) {
   const { socket, nickname } = usePlayer();
+  const { play } = useAudio();
   const nick = nickname || (typeof window !== 'undefined' ? localStorage.getItem('player_nickname') : '');
   const canvasRef = useRef(null);
   const drawingRef = useRef(null);
   const errorTimer = useRef(null);
+  const recordedRef = useRef(false);
 
   const [state, setState] = useState(null);
   const [secret, setSecret] = useState(null);
@@ -79,6 +83,7 @@ export default function Drawing({ roomCode, onExit }) {
       if (payload?.roomCode !== roomCode) return;
       setState(payload);
       setRemaining(payload.remainingMs || 0);
+      if (payload.phase !== 'finished') recordedRef.current = false;
     };
     const onWord = (payload) => {
       if (payload?.roomCode === roomCode) setSecret(payload);
@@ -125,6 +130,15 @@ export default function Drawing({ roomCode, onExit }) {
   const standings = useMemo(() => [...(state?.scores || [])].sort((a, b) => b.score - a.score), [state?.scores]);
   const myScore = standings.find((player) => player.nickname === nick)?.score || 0;
   const remainingSeconds = Math.ceil(remaining / 1000);
+
+  useEffect(() => {
+    if (!isFinished || recordedRef.current) return;
+    const mine = standings.find((player) => player.nickname === nick);
+    if (!mine) return;
+    recordedRef.current = true;
+    recordPersonalResult({ gameType: 'drawing', score: mine.score || 0, won: state.winner === nick });
+    play(state.winner === nick ? 'victory' : 'buzzer');
+  }, [isFinished, standings, nick, state?.winner, play]);
 
   const sendStroke = (from, to) => {
     if (!socket || !isDrawer) return;

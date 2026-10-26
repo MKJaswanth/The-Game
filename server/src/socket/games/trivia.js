@@ -25,6 +25,8 @@ export async function startTriviaGame(io, roomCode) {
   room.players.forEach((p) => {
     scores[p.nickname] = 0;
   });
+  const botNickname = room.isSolo ? 'QuizBot' : null;
+  if (botNickname) scores[botNickname] = 0;
 
   const gameState = {
     roomCode: code,
@@ -38,7 +40,9 @@ export async function startTriviaGame(io, roomCode) {
     questionStartTime: null,
     currentAnswers: {}, // nickname -> { answerIndex, isCorrect, points, speedBonus, secondsTaken }
     timerId: null,
-    intermissionTimerId: null
+    intermissionTimerId: null,
+    botTimerId: null,
+    botNickname
   };
 
   activeTriviaGames.set(code, gameState);
@@ -48,7 +52,8 @@ export async function startTriviaGame(io, roomCode) {
   io.to(code).emit('trivia:starting', {
     totalQuestions: 10,
     timeLimit: 15,
-    players: room.players
+    players: room.players,
+    botNickname
   });
 
   try {
@@ -79,6 +84,7 @@ export function stopTriviaGame(roomCode) {
   if (game) {
     if (game.timerId) clearTimeout(game.timerId);
     if (game.intermissionTimerId) clearTimeout(game.intermissionTimerId);
+    if (game.botTimerId) clearTimeout(game.botTimerId);
     activeTriviaGames.delete(code);
     console.log(`[Trivia] Cleaned up trivia game for room ${code}`);
   }
@@ -122,8 +128,26 @@ function startQuestion(io, roomCode) {
     question: q.question,
     options: q.options,
     timeLimit: game.questionDuration,
-    scores: { ...game.scores }
+    scores: { ...game.scores },
+    botNickname: game.botNickname
   });
+
+  if (game.botNickname) {
+    if (game.botTimerId) clearTimeout(game.botTimerId);
+    game.botTimerId = setTimeout(() => {
+      const live = activeTriviaGames.get(roomCode);
+      if (!live || live.status !== 'question_active') return;
+      const botCorrect = Math.random() < 0.72;
+      const answerIndex = botCorrect
+        ? q.correctIndex
+        : (q.correctIndex + 1 + Math.floor(Math.random() * 3)) % q.options.length;
+      handleTriviaAnswer(io, null, {
+        roomCode,
+        nickname: game.botNickname,
+        answerIndex
+      });
+    }, 720);
+  }
 
   // Start 15s countdown timer
   if (game.timerId) clearTimeout(game.timerId);
@@ -140,6 +164,7 @@ function endQuestion(io, roomCode, reason = 'time_expired') {
   if (!game || game.status !== 'question_active') return;
 
   if (game.timerId) clearTimeout(game.timerId);
+  if (game.botTimerId) clearTimeout(game.botTimerId);
   game.status = 'question_result';
 
   const q = game.currentQuestion;
@@ -198,7 +223,8 @@ function endTriviaGame(io, roomCode) {
   io.to(roomCode).emit('trivia:end', {
     rankings,
     winner,
-    finalScores: { ...game.scores }
+    finalScores: { ...game.scores },
+    botNickname: game.botNickname
   });
 
   // Submit all player scores to database/in-memory store. The top score is a
@@ -206,6 +232,7 @@ function endTriviaGame(io, roomCode) {
   // can tell a quiz victory from a loss.
   const topScore = rankings[0]?.score || 0;
   for (const { nickname, score } of rankings) {
+    if (nickname === game.botNickname) continue;
     if (score > 0) {
       recordScore(nickname, 'trivia', score, topScore > 0 && score === topScore).catch((err) => {
         console.error(`[Trivia] Error recording score for ${nickname}:`, err);
@@ -285,7 +312,7 @@ export function handleTriviaAnswer(io, socket, { roomCode, nickname, answerIndex
 
   // Notify other players that this player has answered (without revealing the choice)
   const room = getRoom(code);
-  const totalPlayersInRoom = room ? room.players.length : 1;
+  const totalPlayersInRoom = (room ? room.players.length : 1) + (game.botNickname ? 1 : 0);
   const totalAnsweredCount = Object.keys(game.currentAnswers).length;
 
   io.to(code).emit('trivia:player_answered', {

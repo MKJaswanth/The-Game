@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { usePlayer } from '../context/PlayerContext.jsx';
 import Avatar from './Avatar.jsx';
+import { useAudio } from '../context/AudioContext.jsx';
 
 function BoltIcon({ size = 15 }) {
   return (
@@ -32,6 +33,7 @@ function TrophyIcon({ size = 15 }) {
 
 export default function Navbar() {
   const { nickname, onlinePlayers, leaveHub } = usePlayer();
+  const { enabled, toggle } = useAudio();
 
   return (
     <nav className="nav">
@@ -65,14 +67,20 @@ export default function Navbar() {
                 <Avatar nickname={nickname} size="sm" />
                 <span className="nav-chip-name">{nickname}</span>
               </Link>
+              <button type="button" className={`nav-sfx ${enabled ? 'is-on' : ''}`} onClick={toggle} aria-pressed={enabled} title={enabled ? 'Mute sound effects' : 'Enable sound effects'}>
+                {enabled ? 'SFX' : 'MUTE'}
+              </button>
               <button type="button" className="nav-leave" onClick={leaveHub} title="Exit hub" aria-label="Exit hub">
                 ×
               </button>
             </div>
           ) : (
-            <Link to="/" className="btn btn-primary nav-cta">
-              Play now
-            </Link>
+            <div className="nav-guest-actions">
+              <button type="button" className={`nav-sfx ${enabled ? 'is-on' : ''}`} onClick={toggle} aria-pressed={enabled} title={enabled ? 'Mute sound effects' : 'Enable sound effects'}>
+                {enabled ? 'SFX' : 'MUTE'}
+              </button>
+              <Link to="/" className="btn btn-primary nav-cta">Play now</Link>
+            </div>
           )}
         </div>
       </div>
@@ -201,6 +209,20 @@ export default function Navbar() {
           justify-content: center;
           transition: color var(--ease), border-color var(--ease), background var(--ease);
         }
+        .nav-sfx {
+          min-width: 38px;
+          height: 28px;
+          padding: 0 7px;
+          border-radius: var(--r-sm);
+          border: 1px solid var(--border-2);
+          background: var(--surface);
+          color: var(--text-3);
+          font-family: var(--mono);
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: .04em;
+        }
+        .nav-sfx.is-on { color: var(--accent-hi); border-color: var(--accent); }
         .nav-leave:hover {
           color: var(--red);
           border-color: var(--red);
@@ -208,6 +230,7 @@ export default function Navbar() {
         }
 
         .nav-cta { padding: 7px 16px; font-size: var(--t-sm); }
+        .nav-guest-actions { display: flex; align-items: center; gap: var(--s3); }
 
         @media (max-width: 600px) {
           .nav-inner { gap: var(--s2); }
@@ -226,6 +249,7 @@ export default function Navbar() {
           .nav-chip { padding-right: 5px; }
           .nav-chip-name { display: none; }
           .nav-player { gap: 6px; }
+          .nav-sfx { min-width: 34px; padding-inline: 4px; }
         }
       `}</style>
     </nav>
